@@ -613,6 +613,13 @@ config I2C_XILINX
 	  This driver can also be built as a module.  If so, the module
 	  will be called xilinx_i2c.
 
+config I2C_BCM1160
+    	tristate "BCM116X BCM215XX adapter"
+    	depends on (ARCH_BCM116X || ARCH_BCMRING || ARCH_BCM215XX) && I2C
+    	help
+        	Enable the i2c adapter on the BCM116X or BCMRING, which is used for
+        	Power Management.
+
 comment "External I2C/SMBus adapter drivers"
 
 config I2C_PARPORT

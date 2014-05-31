@@ -34,3 +34,6 @@ obj-$(CONFIG_BATTERY_DA9030)	+= da9030_battery.o
 obj-$(CONFIG_BATTERY_MAX17040)	+= max17040_battery.o
 obj-$(CONFIG_BATTERY_Z2)	+= z2_battery.o
 obj-$(CONFIG_CHARGER_PCF50633)	+= pcf50633-charger.o
+obj-$(CONFIG_BCM59035_POWER)    += bcm59035-power.o
+obj-$(CONFIG_BCM59038_POWER)    += bcm59038-power.o
+obj-$(CONFIG_MAX8986_POWER)	+= max8986-power.o

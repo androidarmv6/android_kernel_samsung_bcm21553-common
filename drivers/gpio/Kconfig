@@ -113,6 +113,12 @@ config GPIO_SCH
 
 comment "I2C GPIO expanders:"
 
+config GPIO_BCM59035
+        tristate "Broadcom BCM59035 PMU GPIO Driver"
+        depends on MFD_BCM59035
+        help
+          If you say yes here to enable GPIO interface for BCM59035 PMU chip
+
 config GPIO_MAX7300
 	tristate "Maxim MAX7300 GPIO expander"
 	depends on I2C

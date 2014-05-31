@@ -1575,4 +1575,10 @@ config SERIAL_ALTERA_UART_CONSOLE
 	help
 	  Enable a Altera UART port to be the system console.
 
+config KEYPAD_BACKLIGHT
+	tristate "Keypad Backlight Driver"
+	depends on BACKLIGHT_CLASS_DEVICE
+	help
+	  Say Y to enable keypad backlight driver.
+
 endmenu

@@ -134,6 +134,13 @@ config KEYBOARD_QT2160
 	  This driver can also be built as a module. If so, the module
 	  will be called qt2160.
 
+config KEYBOARD_BCM
+         bool "BCM keypad"
+         depends on ARCH_BCM215XX || ARCH_BCM116X
+         default y
+         help
+           BCM keypad
+
 config KEYBOARD_BFIN
 	tristate "Blackfin BF54x keypad support"
 	depends on (BF54x && !BF544)
@@ -425,5 +432,16 @@ config KEYBOARD_W90P910
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called w90p910_keypad.
+
+config OFM_DRIVER
+	tristate "OFM based optical mouse"
+	depends on I2C
+	help
+	  Say Y here if you have a OFM  based mouse.
+
+	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called OFM.
 
 endif

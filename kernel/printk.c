@@ -168,6 +168,24 @@ void log_buf_kexec_setup(void)
 	VMCOREINFO_SYMBOL(logged_chars);
 }
 #endif
+//{{ Mark for GetLog - 1/2
+struct struct_kernel_log_mark {
+u32 special_mark_1;
+u32 special_mark_2;
+u32 special_mark_3;
+u32 special_mark_4;
+void *p__log_buf;
+};
+
+static struct struct_kernel_log_mark kernel_log_mark = {
+       .special_mark_1 = (('*' << 24) | ('^' << 16) | ('^' << 8) | ('*' << 0)),
+       .special_mark_2 = (('I' << 24) | ('n' << 16) | ('f' << 8) | ('o' << 0)),
+       .special_mark_3 = (('H' << 24) | ('e' << 16) | ('r' << 8) | ('e' << 0)),
+       .special_mark_4 = (('k' << 24) | ('l' << 16) | ('o' << 8) | ('g' << 0)),
+       .p__log_buf = __log_buf, 
+};
+//}} Mark for GetLog - 1/2
+
 
 static int __init log_buf_len_setup(char *str)
 {
@@ -205,6 +223,11 @@ static int __init log_buf_len_setup(char *str)
 		printk(KERN_NOTICE "log_buf_len: %d\n", log_buf_len);
 	}
 out:
+	
+	//{{ Mark for GetLog - 2/2
+	kernel_log_mark.p__log_buf = __log_buf;
+	//}} Mark for GetLog - 2/2
+
 	return 1;
 }
 
@@ -753,6 +776,11 @@ static inline void printk_delay(void)
 	}
 }
 
+#ifdef CONFIG_BRCM_UNIFIED_LOGGING
+/* Unified logging */
+#include "brcm_ulogging_printk.h"
+#endif
+
 asmlinkage int vprintk(const char *fmt, va_list args)
 {
 	int printed_len = 0;
@@ -827,6 +855,9 @@ asmlinkage int vprintk(const char *fmt, va_list args)
 		}
 	}
 
+#ifdef CONFIG_BRCM_UNIFIED_LOGGING
+#include "brcm_ulogging_printkmtt.h"
+#endif
 	/*
 	 * Copy the output into log_buf.  If the caller didn't provide
 	 * appropriate log level tags, we insert them here
@@ -840,7 +871,7 @@ asmlinkage int vprintk(const char *fmt, va_list args)
 			printed_len += 3;
 			new_text_line = 0;
 
-			if (printk_time) {
+			if(printk_time){
 				/* Follow the token with the time */
 				char tbuf[50], *tp;
 				unsigned tlen;

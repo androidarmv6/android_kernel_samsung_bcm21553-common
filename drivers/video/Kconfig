@@ -2071,6 +2071,14 @@ config FB_XILINX
 	  framebuffer. ML300 carries a 640*480 LCD display on the board,
 	  ML403 uses a standard DB15 VGA connector.
 
+config FB_BCM
+        tristate "BCM platform framebuffer support"
+        depends on FB && (ARCH_BCM116X || ARCH_BCM215XX)
+        select FB_CFB_FILLRECT
+        select FB_CFB_COPYAREA
+        select FB_CFB_IMAGEBLIT
+        default y
+
 config FB_COBALT
 	tristate "Cobalt server LCD frame buffer support"
 	depends on FB && MIPS_COBALT
@@ -2241,6 +2249,10 @@ endif
 
 if FB || SGI_NEWPORT_CONSOLE
 	source "drivers/video/logo/Kconfig"
+endif
+
+if FB_BCM
+	source "drivers/video/broadcom/Kconfig"
 endif
 
 endmenu

@@ -254,6 +254,14 @@ config LEDS_REGULATOR
 	help
 	  This option enables support for regulator driven LEDs.
 
+config LEDS_BCM59035
+       tristate "LED support for Broadcom BCM59035 PMU"
+       depends on LEDS_CLASS && HAVE_PWM
+       help
+         This option enables support for control of LEDs connected to
+         BCM59035 PMU. The LED pattern and pattern-repetition period
+         is set through sysfs.
+
 config LEDS_BD2802
 	tristate "LED driver for BD2802 RGB LED"
 	depends on I2C

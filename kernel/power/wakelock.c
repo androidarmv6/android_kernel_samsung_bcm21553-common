@@ -31,7 +31,8 @@ enum {
 	DEBUG_EXPIRE = 1U << 3,
 	DEBUG_WAKE_LOCK = 1U << 4,
 };
-static int debug_mask = DEBUG_EXIT_SUSPEND | DEBUG_WAKEUP;
+//static int debug_mask = DEBUG_EXIT_SUSPEND | DEBUG_WAKEUP;
+static int debug_mask = 0xF;
 module_param_named(debug_mask, debug_mask, int, S_IRUGO | S_IWUSR | S_IWGRP);
 
 #define WAKE_LOCK_TYPE_MASK              (0x0f)
@@ -269,7 +270,7 @@ static void suspend(struct work_struct *work)
 			pr_info("suspend: abort suspend\n");
 		return;
 	}
-
+	pr_info("%s-b4 suspend: current_event_num = %d\n",__func__,current_event_num);
 	entry_event_num = current_event_num;
 	sys_sync();
 	if (debug_mask & DEBUG_SUSPEND)
@@ -285,6 +286,7 @@ static void suspend(struct work_struct *work)
 			tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
 			tm.tm_hour, tm.tm_min, tm.tm_sec, ts.tv_nsec);
 	}
+	pr_info("%s-after suspend: current_event_num = %d\n",__func__,current_event_num);
 	if (current_event_num == entry_event_num) {
 		if (debug_mask & DEBUG_SUSPEND)
 			pr_info("suspend: pm_suspend returned with no event\n");
@@ -306,7 +308,10 @@ static void expire_wake_locks(unsigned long data)
 	if (debug_mask & DEBUG_EXPIRE)
 		pr_info("expire_wake_locks: done, has_lock %ld\n", has_lock);
 	if (has_lock == 0)
+	{
+		pr_info("%s: queuing suspend_work\n",__func__);
 		queue_work(suspend_work_queue, &suspend_work);
+	}
 	spin_unlock_irqrestore(&list_lock, irqflags);
 }
 static DEFINE_TIMER(expire_timer, expire_wake_locks, 0, 0);
@@ -341,7 +346,7 @@ void wake_lock_init(struct wake_lock *lock, int type, const char *name)
 	if (name)
 		lock->name = name;
 	BUG_ON(!lock->name);
-
+	pr_info("wake_lock_init name=%s\n", lock->name);
 	if (debug_mask & DEBUG_WAKE_LOCK)
 		pr_info("wake_lock_init name=%s\n", lock->name);
 #ifdef CONFIG_WAKELOCK_STAT
@@ -365,6 +370,7 @@ EXPORT_SYMBOL(wake_lock_init);
 void wake_lock_destroy(struct wake_lock *lock)
 {
 	unsigned long irqflags;
+	pr_info("wake_lock_destroy name=%s\n", lock->name);
 	if (debug_mask & DEBUG_WAKE_LOCK)
 		pr_info("wake_lock_destroy name=%s\n", lock->name);
 	spin_lock_irqsave(&list_lock, irqflags);
@@ -397,6 +403,7 @@ static void wake_lock_internal(
 	long expire_in;
 
 	spin_lock_irqsave(&list_lock, irqflags);
+// haipeng	pr_info("%s:%s\n",__func__,lock->name);
 	type = lock->flags & WAKE_LOCK_TYPE_MASK;
 	BUG_ON(type >= WAKE_LOCK_TYPE_COUNT);
 	BUG_ON(!(lock->flags & WAKE_LOCK_INITIALIZED));
@@ -458,8 +465,11 @@ static void wake_lock_internal(
 					pr_info("wake_lock: %s, stop expire timer\n",
 						lock->name);
 			if (expire_in == 0)
+			{
+				pr_info("%s: queuing suspend_work\n",__func__);
 				queue_work(suspend_work_queue, &suspend_work);
 		}
+	}
 	}
 	spin_unlock_irqrestore(&list_lock, irqflags);
 }
@@ -482,6 +492,7 @@ void wake_unlock(struct wake_lock *lock)
 	unsigned long irqflags;
 	spin_lock_irqsave(&list_lock, irqflags);
 	type = lock->flags & WAKE_LOCK_TYPE_MASK;
+// haipeng	pr_info("%s: lock->name:%s\n",__func__,lock->name);
 #ifdef CONFIG_WAKELOCK_STAT
 	wake_unlock_stat_locked(lock, 0);
 #endif
@@ -503,9 +514,14 @@ void wake_unlock(struct wake_lock *lock)
 					pr_info("wake_unlock: %s, stop expire "
 						"timer\n", lock->name);
 			if (has_lock == 0)
+			{
+				pr_info("%s: lock->name %s queuing suspend_work\n",__func__,lock->name);
 				queue_work(suspend_work_queue, &suspend_work);
 		}
-		if (lock == &main_wake_lock) {
+		}
+		if (lock == &main_wake_lock) 
+		{
+			pr_info("%s: main_wake_lock unlocked....\n",__func__);
 			if (debug_mask & DEBUG_SUSPEND)
 				print_active_locks(WAKE_LOCK_SUSPEND);
 #ifdef CONFIG_WAKELOCK_STAT

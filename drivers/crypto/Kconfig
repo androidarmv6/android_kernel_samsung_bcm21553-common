@@ -243,4 +243,11 @@ config CRYPTO_DEV_OMAP_SHAM
 	  OMAP processors have SHA1/MD5 hw accelerator. Select this if you
 	  want to use the OMAP module for SHA1/MD5 algorithms.
 
+config CRYPTO_DEV_BRCM_BLKCRYPTO
+       tristate "Support for BRCM BLKCRYPTO hw accelerator"
+       depends on ARCH_BCM215XX
+       select CRYPTO_AES
+       help
+          Driver for BRCM Bulk Cryptography accelerator.
+
 endif # CRYPTO_HW

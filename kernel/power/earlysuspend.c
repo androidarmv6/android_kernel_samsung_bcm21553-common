@@ -27,7 +27,7 @@ enum {
 	DEBUG_USER_STATE = 1U << 0,
 	DEBUG_SUSPEND = 1U << 2,
 };
-static int debug_mask = DEBUG_USER_STATE;
+static int debug_mask = ( DEBUG_USER_STATE | DEBUG_SUSPEND );
 module_param_named(debug_mask, debug_mask, int, S_IRUGO | S_IWUSR | S_IWGRP);
 
 static DEFINE_MUTEX(early_suspend_lock);
@@ -43,8 +43,9 @@ enum {
 	SUSPEND_REQUESTED_AND_SUSPENDED = SUSPEND_REQUESTED | SUSPENDED,
 };
 static int state;
+module_param_named(state, state, int, S_IRUGO | S_IWUSR | S_IWGRP);
 
-void register_early_suspend(struct early_suspend *handler)
+void register_early_suspend_actual(struct early_suspend *handler)
 {
 	struct list_head *pos;
 
@@ -60,7 +61,7 @@ void register_early_suspend(struct early_suspend *handler)
 		handler->suspend(handler);
 	mutex_unlock(&early_suspend_lock);
 }
-EXPORT_SYMBOL(register_early_suspend);
+EXPORT_SYMBOL(register_early_suspend_actual);
 
 void unregister_early_suspend(struct early_suspend *handler)
 {
@@ -75,11 +76,15 @@ static void early_suspend(struct work_struct *work)
 	struct early_suspend *pos;
 	unsigned long irqflags;
 	int abort = 0;
-
+ 
+	pr_info("%s: state = %d\n",__func__,state);
 	mutex_lock(&early_suspend_lock);
 	spin_lock_irqsave(&state_lock, irqflags);
 	if (state == SUSPEND_REQUESTED)
+	{
 		state |= SUSPENDED;
+		pr_info("%s: state updated to %d\n",__func__,state);
+	}
 	else
 		abort = 1;
 	spin_unlock_irqrestore(&state_lock, irqflags);
@@ -94,8 +99,14 @@ static void early_suspend(struct work_struct *work)
 	if (debug_mask & DEBUG_SUSPEND)
 		pr_info("early_suspend: call handlers\n");
 	list_for_each_entry(pos, &early_suspend_handlers, link) {
+		pr_info("%s:%s => pos->suspend = %p\n",__func__,pos->name,pos->suspend);
+		
 		if (pos->suspend != NULL)
+		{
+			pr_info("%s:%s => invoked\n",__func__,pos->name);
 			pos->suspend(pos);
+			pr_info("%s:%s => return\n",__func__,pos->name);
+		}
 	}
 	mutex_unlock(&early_suspend_lock);
 
@@ -103,6 +114,7 @@ static void early_suspend(struct work_struct *work)
 		pr_info("early_suspend: sync\n");
 
 	sys_sync();
+
 abort:
 	spin_lock_irqsave(&state_lock, irqflags);
 	if (state == SUSPEND_REQUESTED_AND_SUSPENDED)
@@ -115,13 +127,20 @@ static void late_resume(struct work_struct *work)
 	struct early_suspend *pos;
 	unsigned long irqflags;
 	int abort = 0;
-
+      
 	mutex_lock(&early_suspend_lock);
+	pr_info("%s: state = %d\n",__func__,state);
 	spin_lock_irqsave(&state_lock, irqflags);
 	if (state == SUSPENDED)
+	{
 		state &= ~SUSPENDED;
+		pr_info("%s: state updated to %d\n",__func__,state);
+	}
 	else
+	{
+		pr_info("%s aborted",__func__);
 		abort = 1;
+	}
 	spin_unlock_irqrestore(&state_lock, irqflags);
 
 	if (abort) {
@@ -132,10 +151,19 @@ static void late_resume(struct work_struct *work)
 	if (debug_mask & DEBUG_SUSPEND)
 		pr_info("late_resume: call handlers\n");
 	list_for_each_entry_reverse(pos, &early_suspend_handlers, link)
+	{
+		pr_info("%s:%s => pos->suspend = %p\n",__func__,pos->name,pos->resume);
+
 		if (pos->resume != NULL)
+		{
+			pr_info("%s:%s => invoked\n",__func__,pos->name);
 			pos->resume(pos);
+			pr_info("%s:%s => returned\n",__func__,pos->name);
+		}
+	}
 	if (debug_mask & DEBUG_SUSPEND)
 		pr_info("late_resume: done\n");
+
 abort:
 	mutex_unlock(&early_suspend_lock);
 }
@@ -147,6 +175,9 @@ void request_suspend_state(suspend_state_t new_state)
 
 	spin_lock_irqsave(&state_lock, irqflags);
 	old_sleep = state & SUSPEND_REQUESTED;
+	pr_info("%s:state = %d old_sleep = %d new_state = %d\n",__func__,
+		state,old_sleep,new_state);
+		
 	if (debug_mask & DEBUG_USER_STATE) {
 		struct timespec ts;
 		struct rtc_time tm;
@@ -160,12 +191,17 @@ void request_suspend_state(suspend_state_t new_state)
 			tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
 			tm.tm_hour, tm.tm_min, tm.tm_sec, ts.tv_nsec);
 	}
+
 	if (!old_sleep && new_state != PM_SUSPEND_ON) {
-		state |= SUSPEND_REQUESTED;
+		state |= SUSPEND_REQUESTED;        
+		pr_info("%s: state updated to %d\n",__func__,state);
+		pr_info("%s:queuing early_suspend_work. state = %d\n",__func__,state);
 		queue_work(suspend_work_queue, &early_suspend_work);
 	} else if (old_sleep && new_state == PM_SUSPEND_ON) {
 		state &= ~SUSPEND_REQUESTED;
+		pr_info("%s: state updated to %d\n",__func__,state);
 		wake_lock(&main_wake_lock);
+		pr_info("%s:queuing late_resume_work. state = %d\n",__func__,state);
 		queue_work(suspend_work_queue, &late_resume_work);
 	}
 	requested_suspend_state = new_state;

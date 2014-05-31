@@ -305,6 +305,7 @@ void kernel_restart_prepare(char *cmd)
  *	Shutdown everything and perform a clean reboot.
  *	This is not safe to call in interrupt context.
  */
+extern void sys_setting_info(unsigned int id, unsigned int value);
 void kernel_restart(char *cmd)
 {
 	kernel_restart_prepare(cmd);

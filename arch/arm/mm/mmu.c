@@ -402,6 +402,10 @@ static void __init build_mem_type_table(void)
 	if (arch_is_coherent() && cpu_is_xsc3())
 		mem_types[MT_MEMORY].prot_sect |= PMD_SECT_S;
 
+#if defined(CONFIG_ARCH_BCM215XX)
+	mem_types[MT_MEMORY].prot_sect |= PMD_SECT_TEX(5);
+#endif
+
 	/*
 	 * ARMv6 and above have extended page tables.
 	 */

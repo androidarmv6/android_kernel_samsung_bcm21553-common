@@ -65,6 +65,8 @@ static DEFINE_MUTEX(input_mutex);
 
 static struct input_handler *input_table[8];
 
+extern int debug_level;
+
 static inline int is_event_supported(unsigned int code,
 				     unsigned long *bm, unsigned int max)
 {
@@ -329,6 +331,46 @@ void input_event(struct input_dev *dev,
 {
 	unsigned long flags;
 
+	// forced ramdump 
+	static unsigned int bcm_forcedramdump = 0 ;
+
+	if(value)
+	{
+		#if defined(CONFIG_TOUCHSCREEN_MMS128_REV04)
+			if((strcmp(dev->name,"max8986_ponkey")==0) && (code == KEY_POWER))
+		#else
+			if((strcmp(dev->name,"sec_keypad")==0) && (code == KEY_HOME))
+		#endif
+				bcm_forcedramdump = 0x01;
+
+			if((strcmp(dev->name,"sec_keypad")==0) && (code == KEY_VOLUMEUP))
+				bcm_forcedramdump += 0x02;				
+
+		#if defined(CONFIG_TOUCHSCREEN_MMS128_REV04)		
+			if((strcmp(dev->name,"sec_keypad")==0) && (code == KEY_VOLUMEDOWN))
+				bcm_forcedramdump += 0x04;
+		#endif
+
+		#if defined(CONFIG_TOUCHSCREEN_MMS128_REV04)
+			if(bcm_forcedramdump == 0x07) 
+		#else
+			if(bcm_forcedramdump == 0x03) 
+		#endif
+			{
+				if(debug_level==2||debug_level==1)
+				{
+					bcm_forcedramdump = 0;
+					panic("Forced Ramdump !!\n");
+				}
+			}
+	}
+		
+	if((bcm_forcedramdump > 0) && (code != 0) && (value == 0))
+	{
+			bcm_forcedramdump = 0;
+	}
+	// forced ramdump 
+	
 	if (is_event_supported(type, dev->evbit, EV_MAX)) {
 
 		spin_lock_irqsave(&dev->event_lock, flags);

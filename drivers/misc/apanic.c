@@ -38,6 +38,13 @@
 #include <linux/workqueue.h>
 #include <linux/preempt.h>
 
+#ifdef CONFIG_BRCM_KPANIC_UI_IND
+#include <linux/broadcom/lcdc_dispimg.h>
+#include "bcmlog.h"
+
+extern int cp_crashed;
+#endif
+
 extern void ram_console_enable_console(int);
 
 struct panic_header {
@@ -563,6 +570,15 @@ static int apanic(struct notifier_block *this, unsigned long event,
 	}
 
 	printk(KERN_EMERG "apanic: Panic dump sucessfully written to flash\n");
+#ifdef CONFIG_BRCM_KPANIC_UI_IND
+
+#ifdef CONFIG_BRCM_CP_CRASH_DUMP
+	if (!cp_crashed ||BCMLOG_CPCRASH_MTD != BCMLOG_GetCpCrashDumpDevice())
+#endif		
+	{
+		lcdc_disp_img(IMG_INDEX_END_DUMP); //end of dump
+	}
+#endif
 
  out:
 #ifdef CONFIG_PREEMPT

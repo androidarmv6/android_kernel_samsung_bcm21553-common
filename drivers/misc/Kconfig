@@ -360,6 +360,10 @@ config UID_STAT
 	bool "UID based statistics tracking exported to /proc/uid_stat"
 	default n
 
+config IFACE_STAT
+	bool "Persistent interface statistics tracking exported to /proc/iface_stat"
+	default n
+
 config VMWARE_BALLOON
 	tristate "VMware Balloon Driver"
 	depends on X86
@@ -398,6 +402,147 @@ config APANIC_PLABEL
 	---help---
 	 If your platform uses a different flash partition label for storing
  	 crashdumps, enter it here.
+
+config MISC_FRESET
+	bool "Factory Reset support"
+	default y
+	---help---
+	Support for Factory Reset
+
+config BRCM_CKBLOCK_READER
+	bool "Broadcom SIM Lock Data Block Reader" 
+	depends on MTD
+	help
+	  This option enables CK Block Reader driver.
+          CK Block Reader exports the API that is used
+          by KRIL to read the CK data block 
+
+config BRCM_CKBLOCK_NAME
+       string "Name of the MTD Partition in which CK Block is stored"
+       depends on BRCM_CKBLOCK_READER
+        default "ckdatablock"
+        ---help---
+        If the platform uses a differnt partition name for storing the
+        CK Data block, enter the name here.
+
+config SENSORS_TOTORO
+	tristate "Sensor support For Totoro(GT-S5360) Project"
+	depends on I2C
+	default n
+	help
+	  If you say yes here you get support for Totoro(GT-S5360)'s sensors.
+	  
+config SENSORS_LUISA
+	tristate "Sensor support For Luisa(GT-B5510) Project"
+	depends on I2C
+	default n
+	help
+	  If you say yes here you get support for Luisa(GT-B5510)'s sensors.	  
+
+config SENSORS_TASSVE
+	tristate "Sensor support For TassVE(GT-S5570i) Project"
+	depends on I2C
+	default n
+	help
+	  If you say yes here you get support for TassVE(GT-S5570i)'s sensors.
+
+config SENSORS_COOPERVE
+	tristate "Sensor support For CooperVE(GT-S5830i) Project"
+	depends on I2C
+	default n
+	help
+	  If you say yes here you get support for CooperVE(GT-S5830i)'s sensors.
+
+config SENSORS_BMA222
+	tristate "BMA acceleration sensor support"
+	depends on I2C
+	default n
+	help
+	  If you say yes here you get support for Bosch Sensortec's 
+	  acceleration sensors BMA.
+
+config SENSORS_GP2A
+	tristate "GP2A sensor support"
+	depends on I2C
+	default n
+	help
+	  If you say yes here you get support for Sharp's sensor GP2A.
+
+config SENSORS_TAOS
+	tristate "TAOS sensor support"
+	depends on I2C
+	default n
+	help
+	  If you say yes here you get support for sensor TAOS.
+
+config SENSORS_MMC328X
+	tristate "MEMSIC Magnetic Sensor MMC328X Driver Support"
+	depends on I2C
+	default n
+	help
+	  If you say yes here you get support for the MEMSIC magnateic sensor
+
+config INPUT_YAS_MAGNETOMETER
+         tristate "YAS Geomagnetic Sensor"
+         depends on I2C
+
+config INPUT_YAS_MAGNETOMETER_POSITION
+         int "YAS Geomagnetic Sensor Mounting Position on Board"
+         depends on INPUT_YAS_MAGNETOMETER
+         default "0"
+         help
+           Chip mounting position (pin 1).
+              0: top, upper-left
+              1: top, upper-right
+              2: top, lower-right
+              3: top, lower-left
+              4: bottom, upper-left
+              5: bottom, upper-right
+              6: bottom, lower-right
+              7: bottom, lower-left
+
+config INPUT_YAS_ACCELEROMETER
+         tristate "YAS Acceleration Sensor"
+         depends on I2C
+
+config INPUT_YAS_ACCELEROMETER_POSITION
+         int "YAS Acceleration Sensor Mounting Position on Board"
+         depends on INPUT_YAS_ACCELEROMETER
+         default "0"
+         help
+           Chip mounting position (pin 1).
+              0: top, upper-left
+              1: top, upper-right
+              2: top, lower-right
+              3: top, lower-left
+              4: bottom, upper-left
+              5: bottom, upper-right
+              6: bottom, lower-right
+              7: bottom, lower-left
+
+config INPUT_YAS_ORIENTATION
+	tristate "YAS Orientation Sensor"
+	depends on I2C
+	  
+config MAX8986_AUDIO
+	tristate "MAX8986 audio driver"
+	depends on MFD_MAX8986
+	---help---
+	Y to get the support of MAX8986 audio APIs
+
+config MAX8986_MUIC
+	tristate "MAX8986 MUIC driver"
+	depends on MFD_MAX8986
+	---help---
+	Y to enable Max8986 PMU MUIC driver
+
+config BCM59035_PWM
+	bool "Broadcom BCM59035 PWM support"
+	depends on MFD_BCM59035
+	select HAVE_PWM
+	help
+	  This option enables device driver support for the PWM channels
+	  on Broadcom BCM59035 PMU chip.
 
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"

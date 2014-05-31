@@ -378,7 +378,20 @@ struct input_absinfo {
 #define KEY_WIMAX		246
 #define KEY_RFKILL		247	/* Key that controls all radios */
 
-/* Code 255 is reserved for special needs of AT keyboard driver */
+/*
+According to Android,OEM can define their own keys and changes
+in framework/apps to get those keys in framework or send it to application.
+so the application can take action on that.
+
+In case of single button headset as here, it would be phone app which
+needs to get this key and takes action like accept  or hang-up the call.
+We define our own key for Headset button press for this puspose.
+Its KEY_BCM_HEADSET_BUTTON which has same value as KEY_SEND as defined here
+in input.h for Martini platform.
+*/
+#define KEY_BCM_HEADSET_BUTTON KEY_SEND
+
+/* Range 248 - 255 is reserved for special needs of AT keyboard driver */
 
 #define BTN_MISC		0x100
 #define BTN_0			0x100

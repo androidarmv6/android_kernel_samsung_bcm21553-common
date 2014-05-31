@@ -51,6 +51,22 @@ config MFD_ASIC3
 	  This driver supports the ASIC3 multifunction chip found on many
 	  PDAs (mainly iPAQ and HTC based ones)
 
+config MFD_BCM59035
+        tristate "Support for Broadcom BCM59035 PMU chip"
+        select MFD_CORE
+        depends on I2C
+        help
+         If you say yes here you will get support for Broadcom BCM59035 PMU chip.
+         This includes voltage regulators, RTC, DVS,GPIO,battery charging etc
+
+config MFD_BCM59038
+        tristate "Support for Broadcom BCM59038 PMU chip"
+        select MFD_CORE
+        depends on I2C && ARCH_BCM215XX
+        help
+         If you say yes here you will get support for Broadcom BCM59038 PMU chip.
+         This includes voltage regulators, RTC, DVS,GPIO,battery charging etc
+
 config MFD_SH_MOBILE_SDHI
 	bool "Support for SuperH Mobile SDHI"
 	depends on SUPERH || ARCH_SHMOBILE
@@ -63,6 +79,20 @@ config MFD_SH_MOBILE_SDHI
 config MFD_DAVINCI_VOICECODEC
 	tristate
 	select MFD_CORE
+
+config MFD_MAX8986
+        tristate "Support for Maxim MAX8986 PMU chip"
+        depends on I2C && ARCH_BCM215XX
+        select MFD_CORE
+        ---help---
+         If you say yes here you will get support for Maxim Max8986 PMU chip.
+         This includes voltage regulators, RTC, DVS,GPIO,battery charging etc
+
+config MAX8986_WORKAROUND
+	bool "Support for i2c algo workaround"
+	depends on MFD_MAX8986
+	---help---
+	If you say yes here i2c algo used will change as required by Max8986 chip.
 
 config MFD_DM355EVM_MSP
 	bool "DaVinci DM355 EVM microcontroller"

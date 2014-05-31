@@ -146,6 +146,53 @@ comment "I2C RTC drivers"
 
 if I2C
 
+config RTC_DRV_BCM59035
+        tristate "Broadcom BCM59035 PMU RTC"
+        depends on MFD_BCM59035
+        select RTC_ANDROID_ALARM_WORKAROUND
+        help
+          If you say yes here you will get support for the RTC subsystem
+          of Broadcom BCM59035 PMU chip
+
+          This driver can also be built as a module. If so, the module
+          will be called "rtc-bcm59035".
+
+config RTC_DRV_BCM59038
+        tristate "Broadcom BCM59038 PMU RTC"
+        depends on MFD_BCM59038
+        help
+          If you say yes here you will get support for the RTC subsystem
+          of Broadcom BCM59038 PMU chip
+
+          This driver can also be built as a module. If so, the module
+          will be called "rtc-bcm59038".
+
+config RTC_DRV_MAX8986
+       tristate "Maxim MAX8986 PMU RTC"
+       depends on MFD_MAX8986
+       select RTC_ANDROID_ALARM_WORKAROUND
+       help
+         If you say yes here you will get support for the RTC subsystem
+         of Maxim MAX8986 PMU chip
+
+         This driver can also be built as a module. If so, the module
+         will be called "rtc-max8986".
+
+config RTC_ANDROID_ALARM_WORKAROUND
+       bool "Fix for alarm handling in 'Android' environment"
+       help
+         This option selects temporary fix for alarm handling in 'Android'
+         environment. This option enables code to disable alarm in the
+         'resume' handler of RTC driver. In the normal mode,
+         android handles all alarms in software without using the RTC chip.
+         Android sets the alarm in the rtc only in the suspend path (by
+         calling .set_alarm with struct rtc_wkalrm->enabled set to 1).
+         In the resume path, android tries to disable alarm by calling
+         .set_alarm with struct rtc_wkalrm->enabled' field set to 0.
+         But unfortunately, it memsets the rtc_wkalrm struct to 0, which
+         causes the rtc lib to flag error and control does not reach RTC
+         driver. Hence this workaround.
+
 config RTC_DRV_DS1307
 	tristate "Dallas/Maxim DS1307/37/38/39/40, ST M41T00, EPSON RX-8025"
 	help

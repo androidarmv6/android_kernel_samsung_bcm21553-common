@@ -35,6 +35,10 @@
 #include "signal.h"
 
 static const char *handler[]= { "prefetch abort", "data abort", "address exception", "interrupt" };
+#ifdef CONFIG_BRCM_KPANIC_UI_IND
+#include <linux/broadcom/lcdc_dispimg.h>
+extern int cp_crashed;
+#endif
 
 #ifdef CONFIG_DEBUG_USER
 unsigned int user_debug;
@@ -267,6 +271,15 @@ void die(const char *str, struct pt_regs *regs, int err)
 	int ret;
 
 	oops_enter();
+#ifdef CONFIG_BRCM_KPANIC_UI_IND
+	if (!lcdc_showing_dump())
+	{
+		if (!cp_crashed)
+			lcdc_disp_img(IMG_INDEX_AP_DUMP); 
+		else
+			lcdc_disp_img(IMG_INDEX_CP_DUMP); 
+	}
+#endif
 
 	spin_lock_irq(&die_lock);
 	console_verbose();
@@ -739,6 +752,17 @@ void abort(void)
 	/* if that doesn't kill us, halt */
 	panic("Oops failed to kill thread");
 }
+
+#if defined(CONFIG_SEC_DEBUG)
+void cp_abort(void)
+{
+	//BUG();
+
+	/* if that doesn't kill us, halt */
+	panic("CP Crash");
+}
+#endif
+
 EXPORT_SYMBOL(abort);
 
 void __init trap_init(void)

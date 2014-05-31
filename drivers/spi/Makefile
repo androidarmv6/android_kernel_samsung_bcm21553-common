@@ -6,6 +6,10 @@ ifeq ($(CONFIG_SPI_DEBUG),y)
 EXTRA_CFLAGS += -DDEBUG
 endif
 
+ifeq ($(CONFIG_ATHENA),y)
+EXTRA_CFLAGS                += -D_ATHENA_
+endif
+
 # small core, mostly translating board-specific
 # config declarations into driver model code
 obj-$(CONFIG_SPI_MASTER)		+= spi.o
@@ -46,6 +50,11 @@ obj-$(CONFIG_SPI_XILINX_PLTFM)		+= xilinx_spi_pltfm.o
 obj-$(CONFIG_SPI_SH_SCI)		+= spi_sh_sci.o
 obj-$(CONFIG_SPI_SH_MSIOF)		+= spi_sh_msiof.o
 obj-$(CONFIG_SPI_STMP3XXX)		+= spi_stmp.o
+ifdef CONFIG_OSDAL_SUPPORT
+obj-$(CONFIG_SPI_BCM21XX)       += spi_bcm21xx_osdal.o
+else
+obj-$(CONFIG_SPI_BCM21XX)		+= spi_bcm21xx.o
+endif
 obj-$(CONFIG_SPI_NUC900)		+= spi_nuc900.o
 
 # special build for s3c24xx spi driver with fiq support

@@ -119,6 +119,23 @@ config TOUCHSCREEN_DYNAPRO
 	  To compile this driver as a module, choose M here: the
 	  module will be called dynapro.
 
+config TOUCHSCREEN_CYTTSP_CORE
+	tristate "Cypress TTSP touchscreen core"
+	help
+	  Always activated for Cypress TTSP touchscreen
+
+config TOUCHSCREEN_CYTTSP_I2C
+	tristate "Cypress TTSP i2c touchscreen"
+	depends on I2C && TOUCHSCREEN_CYTTSP_CORE
+	help
+	  Say Y here if you have a Cypress TTSP touchscreen
+	  connected to your system with an I2C interface.
+
+	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called cyttsp-i2c.
+
 config TOUCHSCREEN_HAMPSHIRE
 	tristate "Hampshire serial touchscreen"
 	select SERIO
@@ -303,8 +320,32 @@ config TOUCHSCREEN_MIGOR
 	  To compile this driver as a module, choose M here: the
 	  module will be called migor_ts.
 
-config TOUCHSCREEN_SYNAPTICS_I2C_RMI
+config TOUCHSCREEN_TAT200A
+	tristate "Synaptics i2c tat200a touchscreen"
+	depends on I2C
+	help
+	  This enables support for Synaptics RMI over I2C based touchscreens.
+
+config TOUCHSCREEN_TMA340
 	tristate "Synaptics i2c touchscreen"
+	depends on I2C
+	help
+	  This enables support for Synaptics RMI over I2C based touchscreens.
+
+config TOUCHSCREEN_TMA340_COOPERVE
+	tristate "Synaptics i2c touchscreen"
+	depends on I2C
+	help
+	  This enables support for Synaptics RMI over I2C based touchscreens.
+	  
+config TOUCHSCREEN_MMS128
+	tristate "Melfas touchscreen"
+	depends on I2C
+	help
+	  This enables support for Synaptics RMI over I2C based touchscreens.
+
+config TOUCHSCREEN_MMS128_REV04
+	tristate "Melfas touchscreen"
 	depends on I2C
 	help
 	  This enables support for Synaptics RMI over I2C based touchscreens.
@@ -608,5 +649,85 @@ config TOUCHSCREEN_TPS6507X
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called tps6507x_ts.
+
+config TOUCHSCREEN_QT602240
+        tristate "QT602240 I2C Touchscreen"
+        depends on I2C
+        help
+          Say Y here if you have the AT42QT602240/ATMXT224 I2C touchscreen
+          connected to your system.
+
+          If unsure, say N.
+
+          To compile this driver as a module, choose M here: the
+          module will be called qt602240_ts.
+
+config TOUCHSCREEN_QT602240_MULTITOUCH
+        boolean "QT602240 Touchscreen Multitouch"
+        depends on TOUCHSCREEN_QT602240
+        help
+          Say Y here if you want multi touch functionality enabled
+
+          If unsure, say N.
+
+config TOUCHSCREEN_TSC2017
+	tristate "TSC2017 based touchscreens"
+	depends on I2C
+	help
+	  Say Y here if you have a TSC2017 based touchscreen.
+
+	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called tsc2017.
+
+config TOUCHSCREEN_EPML
+       tristate "EPML capacitive touchscreen controller"
+       help
+         Say Y here if you have the EPML touchscreen
+         controller chip in your system.
+
+         If unsure, say N.
+
+         To compile this driver as a module, choose M here: the
+         module will be called epml.
+
+config TOUCHSCREEN_EPML_P4_POWER_SAVE
+       boolean "EPML capacitive touchscreen controller for Firmware versions P4 with power saving"
+       depends on TOUCHSCREEN_EPML
+	   help
+         Say Y here if you have the P2/P3 versions of EPML touchscreen
+         controller chip in your system & you require power saving.
+
+         If unsure, say N.
+
+config TOUCHSCREEN_PCAP7200
+        tristate "EETI Projected capacitive touchscreen controller"
+        help
+          Say Y here if you have the EETI PCAP7200 touchscreen
+          controller chip in your system.
+
+          If unsure, say N.
+
+          To compile this driver as a module, choose M here: the
+          module will be called pcap7200.
+
+config TOUCHSCREEN_F760
+	tristate "Siliconlab touchscreens"
+	depends on I2C
+	help
+	  Say Y here if you have a F760 based touchscreen.
+
+	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called tsc2017.
+
+	  
+config TOUCHSCREEN_MMS128_TASSCOOPER
+	tristate "Melfas touchscreen"
+	depends on I2C
+	help
+	  This enables support for Synaptics RMI over I2C based touchscreens.
 
 endif
