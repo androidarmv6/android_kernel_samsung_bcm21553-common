@@ -602,8 +602,8 @@ typedef enum
 typedef struct {
 	SMS_BEARER_PREFERENCE_t prefer;	///< Preferred Bearer for Sending SMS 
 //**FIXME** MAG - build error in gcc here for some weird reason...
-// ../modules/drivers/char/brcm/fuse_ril/CAPI2_CIB/ext_headers/modem/public/sms_def.h:626: warning: function declaration isn't a prototype
-// ../modules/drivers/char/brcm/fuse_ril/CAPI2_CIB/ext_headers/modem/public/sms_def.h:626: error: field 'get_current' declared as a function
+// drivers/staging/bcm21553/drivers/char/brcm/fuse_ril/CAPI2_CIB/ext_headers/modem/public/sms_def.h:626: warning: function declaration isn't a prototype
+// drivers/staging/bcm21553/drivers/char/brcm/fuse_ril/CAPI2_CIB/ext_headers/modem/public/sms_def.h:626: error: field 'get_current' declared as a function
 //	SMS_BEARER_PREFERENCE_t current;///< Current Bearer for Sending SMS 
 } smsBearerDb_t;
 

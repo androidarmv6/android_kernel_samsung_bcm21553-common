@@ -14,5 +14,5 @@ if BRCM_MODULES
 
 # source Kconfig for proprietary drivers in "Kconfig.priv"
 # add "depends on BRCM_MODULES && BRCM_MODULES_PRIV" to Kconfig
-source "../modules/Kconfig.priv"
+source "drivers/staging/bcm21553/Kconfig.priv"
 endif # BRCM_MODULES

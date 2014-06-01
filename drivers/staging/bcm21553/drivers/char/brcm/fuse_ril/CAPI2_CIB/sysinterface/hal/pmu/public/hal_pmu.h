@@ -746,8 +746,8 @@ typedef enum{
 
 #if !defined(PMU_BCM59055)
 // **FIXME** for some reason, GCC barfs on this when compiling for Android
-// ../modules/drivers/char/brcm/fuse_ril/CAPI2_CIB/sysinterface/hal/pmu/public/hal_pmu.h:679: warning: function declaration isn't a prototype
-//../modules/drivers/char/brcm/fuse_ril/CAPI2_CIB/sysinterface/hal/pmu/public/hal_pmu.h:679: error: field 'get_current' declared as a function
+// drivers/staging/bcm21553/drivers/char/brcm/fuse_ril/CAPI2_CIB/sysinterface/hal/pmu/public/hal_pmu.h:679: warning: function declaration isn't a prototype
+//drivers/staging/bcm21553/drivers/char/brcm/fuse_ril/CAPI2_CIB/sysinterface/hal/pmu/public/hal_pmu.h:679: error: field 'get_current' declared as a function
 #ifndef UNDER_LINUX
 typedef struct
 {

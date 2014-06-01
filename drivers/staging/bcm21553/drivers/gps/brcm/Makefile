@@ -15,11 +15,11 @@ EXTRA_CFLAGS += -DUNDER_LINUX
 EXTRA_CFLAGS += -DRPC_INCLUDED
 EXTRA_CFLAGS += -DSTACK_wedge
 
-EXTRA_CFLAGS += -I ../modules/drivers/char/brcm/fuse_rpc/rpc_CIB/public/
-EXTRA_CFLAGS += -I ../modules/drivers/char/brcm/fuse_ipc/ipc_CIB/public/
-EXTRA_CFLAGS += -I ../modules/drivers/char/brcm/fuse_ril/
-EXTRA_CFLAGS += -I ../modules/drivers/char/brcm/fuse_log/
-include ../modules/drivers/char/brcm/fuse_ril/CAPI2_CIB/capi2_include_paths.gmk
+EXTRA_CFLAGS += -Idrivers/staging/bcm21553/drivers/char/brcm/fuse_rpc/rpc_CIB/public/
+EXTRA_CFLAGS += -Idrivers/staging/bcm21553/drivers/char/brcm/fuse_ipc/ipc_CIB/public/
+EXTRA_CFLAGS += -Idrivers/staging/bcm21553/drivers/char/brcm/fuse_ril/
+EXTRA_CFLAGS += -Idrivers/staging/bcm21553/drivers/char/brcm/fuse_log/
+include drivers/staging/bcm21553/drivers/char/brcm/fuse_ril/CAPI2_CIB/capi2_include_paths.gmk
 
 obj-$(CONFIG_BRCM_CNTIN) = gps_cntin_driver.o
 obj-$(CONFIG_BRCM_CNTIN) += gps_driver.o

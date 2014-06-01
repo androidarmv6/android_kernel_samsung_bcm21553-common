@@ -9,32 +9,32 @@ if BRCM_MODULES_PRIV
 
 # source Kconfig for proprietary drivers here
 # add "depends on BRCM_MODULES && BRCM_MODULES_PRIV" to Kconfig
-source "../modules/drivers/video/bmem/Kconfig"
-source "../modules/drivers/video/hantro/Kconfig"
-source "../modules/drivers/video/ge/Kconfig"
+source "drivers/staging/bcm21553/drivers/video/bmem/Kconfig"
+source "drivers/staging/bcm21553/drivers/video/hantro/Kconfig"
+source "drivers/staging/bcm21553/drivers/video/ge/Kconfig"
 
-source "../modules/drivers/char/brcm/hal_cam/Kconfig"
-source "../modules/drivers/char/brcm/camacq/Kconfig"
+source "drivers/staging/bcm21553/drivers/char/brcm/hal_cam/Kconfig"
+source "drivers/staging/bcm21553/drivers/char/brcm/camacq/Kconfig"
 
-source "../modules/drivers/char/sec/dpram/Kconfig"
+source "drivers/staging/bcm21553/drivers/char/sec/dpram/Kconfig"
 
-source "../modules/drivers/char/brcm/fuse_ipc/Kconfig"
-source "../modules/drivers/char/brcm/fuse_net/Kconfig"
-source "../modules/drivers/char/brcm/fuse_at/Kconfig"
-source "../modules/drivers/char/brcm/fuse_ril/Kconfig"
-source "../modules/drivers/char/brcm/fuse_pdp/Kconfig"
-source "../modules/drivers/char/brcm/fuse_rpc/Kconfig"
-source "../modules/drivers/char/brcm/fuse_log/Kconfig"
-source "../modules/drivers/char/brcm/fuse_sysparm/Kconfig"
-source "../modules/drivers/char/brcm/fuse_vsp/Kconfig"
-source "../modules/drivers/char/brcm/xscript/Kconfig"
-source "../modules/drivers/char/brcm/v3d/Kconfig"
+source "drivers/staging/bcm21553/drivers/char/brcm/fuse_ipc/Kconfig"
+source "drivers/staging/bcm21553/drivers/char/brcm/fuse_net/Kconfig"
+source "drivers/staging/bcm21553/drivers/char/brcm/fuse_at/Kconfig"
+source "drivers/staging/bcm21553/drivers/char/brcm/fuse_ril/Kconfig"
+source "drivers/staging/bcm21553/drivers/char/brcm/fuse_pdp/Kconfig"
+source "drivers/staging/bcm21553/drivers/char/brcm/fuse_rpc/Kconfig"
+source "drivers/staging/bcm21553/drivers/char/brcm/fuse_log/Kconfig"
+source "drivers/staging/bcm21553/drivers/char/brcm/fuse_sysparm/Kconfig"
+source "drivers/staging/bcm21553/drivers/char/brcm/fuse_vsp/Kconfig"
+source "drivers/staging/bcm21553/drivers/char/brcm/xscript/Kconfig"
+source "drivers/staging/bcm21553/drivers/char/brcm/v3d/Kconfig"
 
-source "../modules/drivers/sound/brcm/alsa/Kconfig"
-source "../modules/drivers/sound/brcm/alsa_athena/Kconfig"
+source "drivers/staging/bcm21553/drivers/sound/brcm/alsa/Kconfig"
+source "drivers/staging/bcm21553/drivers/sound/brcm/alsa_athena/Kconfig"
 # Headset module
-source "../modules/drivers/sound/brcm/headset/Kconfig"
-source "../modules/drivers/gps/brcm/Kconfig"
+source "drivers/staging/bcm21553/drivers/sound/brcm/headset/Kconfig"
+source "drivers/staging/bcm21553/drivers/gps/brcm/Kconfig"
 
 # video telephony
 config VIDEO_TELEPHONY_ENABLE

@@ -45,7 +45,7 @@
 
 #include "linux/broadcom/bcm_reset_utils.h"
 
-#include "../../../../modules/drivers/char/brcm/fuse_ril/CAPI2_CIB/sysinterface/hal/adc/public/hal_adc.h"
+#include "../../../drivers/staging/bcm21553/drivers/char/brcm/fuse_ril/CAPI2_CIB/sysinterface/hal/adc/public/hal_adc.h"
 
 #define CONFIG_BRCM_FUSE_RIL_CIB
 /* ---- Public Variables ------------------------------------------------- */

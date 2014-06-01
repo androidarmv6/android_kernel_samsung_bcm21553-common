@@ -11,7 +11,7 @@ obj-$(CONFIG_BCM_CAM_ISX005) += camdrv_luisa.o hal_cam_core_ath.o
 obj-$(CONFIG_BCM_CAM_S5K5CCGX) += camdrv_tassve.o hal_cam_core_ath.o
 obj-$(CONFIG_BCM_CAM_S5K4ECGX) += camdrv_cooperve.o hal_cam_core_ath.o
 #EXTRA_CFLAGS += -I$(KERNEL_DIR)/../../vendor/samsung/modules/camacq 
-EXTRA_CFLAGS += -I../modules/drivers/char/brcm/camacq
+EXTRA_CFLAGS += -Idrivers/staging/bcm21553/drivers/char/brcm/camacq
 EXTRA_CFLAGS += -Idrivers/media/video
 EXTRA_CFLAGS += -D_LINUX_
 

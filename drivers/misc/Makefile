@@ -1,7 +1,7 @@
 #
 # Makefile for misc devices that really don't fit anywhere else.
 #
-EXTRA_CFLAGS += -I ../modules/drivers/char/brcm/fuse_log/
+EXTRA_CFLAGS += -Idrivers/staging/bcm21553/drivers/char/brcm/fuse_log/
 
 obj-$(CONFIG_IBM_ASM)		+= ibmasm/
 obj-$(CONFIG_AD525X_DPOT)	+= ad525x_dpot.o

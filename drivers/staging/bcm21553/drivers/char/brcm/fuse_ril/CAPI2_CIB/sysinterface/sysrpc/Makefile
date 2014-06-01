@@ -8,12 +8,12 @@ else
 EXTRA_CFLAGS += -DPMU_BCM59038
 endif
 
-EXTRA_CFLAGS += -I ../modules/drivers/char/brcm/fuse_rpc/rpc_CIB/public/
-EXTRA_CFLAGS += -I ../modules/drivers/char/brcm/fuse_rpc/rpc_CIB/arpc/inc/
-#EXTRA_CFLAGS += -I ../modules/drivers/char/brcm/fuse_rpc/rpc_CIB/srpc/inc/
+EXTRA_CFLAGS += -Idrivers/staging/bcm21553/drivers/char/brcm/fuse_rpc/rpc_CIB/public/
+EXTRA_CFLAGS += -Idrivers/staging/bcm21553/drivers/char/brcm/fuse_rpc/rpc_CIB/arpc/inc/
+#EXTRA_CFLAGS += -Idrivers/staging/bcm21553/drivers/char/brcm/fuse_rpc/rpc_CIB/srpc/inc/
 
 # common definitons for all capi2 related include paths
-include ../modules/drivers/char/brcm/fuse_ril/CAPI2_CIB/capi2_include_paths.gmk
+include drivers/staging/bcm21553/drivers/char/brcm/fuse_ril/CAPI2_CIB/capi2_include_paths.gmk
 
 
 #**FIXME** MAG - used to prevent redefinition of U_CHAR in various CIB header files
@@ -25,8 +25,8 @@ EXTRA_CFLAGS += -DUNDER_LINUX
 EXTRA_CFLAGS += -DSTACK_wedge
 
 obj-$(CONFIG_BRCM_FUSE_RIL_CIB) += \
-	src/sys_gen_rpc.o \
-	src/sys_hal_rpc.o \
-	src/sys_msg.o \
-	src/sys_rpc.o \
+	sys_gen_rpc.o \
+	sys_hal_rpc.o \
+	sys_msg.o \
+	sys_rpc.o \
 

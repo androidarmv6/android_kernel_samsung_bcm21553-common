@@ -31,10 +31,10 @@ EXTRA_CFLAGS += -DUNDER_LINUX
 EXTRA_CFLAGS += -DRPC_INCLUDED
 EXTRA_CFLAGS += -DSTACK_wedge
 
-EXTRA_CFLAGS += -I ../modules/drivers/char/brcm/fuse_ril/CAPI2/inc/
-EXTRA_CFLAGS += -I ../modules/drivers/char/brcm/fuse_rpc/rpc/inc/
-EXTRA_CFLAGS += -I ../modules/drivers/char/brcm/fuse_ipc/ipc/Implementation/Headers/
-EXTRA_CFLAGS += -I ../modules/drivers/char/brcm/fuse_ipc/inc/
+EXTRA_CFLAGS += -Idrivers/staging/bcm21553/drivers/char/brcm/fuse_ril/CAPI2/inc/
+EXTRA_CFLAGS += -Idrivers/staging/bcm21553/drivers/char/brcm/fuse_rpc/rpc/inc/
+EXTRA_CFLAGS += -Idrivers/staging/bcm21553/drivers/char/brcm/fuse_ipc/ipc/Implementation/Headers/
+EXTRA_CFLAGS += -Idrivers/staging/bcm21553/drivers/char/brcm/fuse_ipc/inc/
 
 obj-$(CONFIG_BRCM_SOUND_ALSA) += snd-brcm-omx.o
 snd-brcm-omx-objs := brcm_alsa_dev.o brcm_alsa_pcm.o

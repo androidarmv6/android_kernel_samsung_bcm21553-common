@@ -1,8 +1,8 @@
 #Makefile for IPC driver
 EXTRA_CFLAGS := -Werror
 
-EXTRA_CFLAGS += -I ../modules/drivers/char/brcm/fuse_ipc/ipc_CIB/public/
-EXTRA_CFLAGS += -I ../modules/drivers/char/brcm/fuse_log/
+EXTRA_CFLAGS += -Idrivers/staging/bcm21553/drivers/char/brcm/fuse_ipc/ipc_CIB/public/
+EXTRA_CFLAGS += -Idrivers/staging/bcm21553/drivers/char/brcm/fuse_log/
 EXTRA_CFLAGS += -DRPC_INCLUDED
 EXTRA_CFLAGS += -DUNDER_LINUX
 

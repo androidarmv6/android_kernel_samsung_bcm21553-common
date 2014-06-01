@@ -1,7 +1,7 @@
 #Makefile for Encrypt and Decrypt sources
 
-EXTRA_CFLAGS += -I ../modules/drivers/char/brcm/fuse_ril/
-EXTRA_CFLAGS += -I ../modules/drivers/char/brcm/fuse_log/
+EXTRA_CFLAGS += -Idrivers/staging/bcm21553/drivers/char/brcm/fuse_ril/
+EXTRA_CFLAGS += -Idrivers/staging/bcm21553/drivers/char/brcm/fuse_log/
 
 obj-$(CONFIG_BRCM_FUSE_RIL_2153SDB) += \
           aes.o \
