@@ -254,6 +254,13 @@ config LEDS_REGULATOR
 	help
 	  This option enables support for regulator driven LEDs.
 
+config LEDS_BCM21553
+       tristate "LED support for Broadcom BCM21553 PMU(by regulator driven)"
+       depends on LEDS_CLASS
+       help
+         This option enables support for control of LEDs connected to
+         BCM21553 PMU.
+
 config LEDS_BCM59035
        tristate "LED support for Broadcom BCM59035 PMU"
        depends on LEDS_CLASS && HAVE_PWM

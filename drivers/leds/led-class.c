@@ -20,19 +20,80 @@
 #include <linux/err.h>
 #include <linux/ctype.h>
 #include <linux/leds.h>
+#include <linux/slab.h>
 #include "leds.h"
+
+//#define __LEDCLASS_DEBUG__
 
 static struct class *leds_class;
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
+
+static void change_brightness(struct work_struct *brightness_change_data)
+{
+#ifdef __LEDCLASS_DEBUG__
+	printk("[LEDClass] %s\n", __func__ );
+#endif
+	struct deferred_brightness_change *brightness_change = container_of(
+			brightness_change_data,
+			struct deferred_brightness_change,
+			brightness_change_work);
+	struct led_classdev *led_cdev = brightness_change->led_cdev;
+	enum led_brightness value = brightness_change->value;
+
+	led_cdev->brightness_set(led_cdev, value);
+
+	/* Free up memory for the brightness_change structure. */
+	kfree(brightness_change);
+}
+
+int queue_brightness_change(struct led_classdev *led_cdev,
+	enum led_brightness value)
+{
+#ifdef __LEDCLASS_DEBUG__
+	printk("[LEDClass] %s\n", __func__ );
+#endif
+	/* Initialize the brightness_change_work and its super-struct. */
+	struct deferred_brightness_change *brightness_change =
+		kzalloc(sizeof(struct deferred_brightness_change), GFP_KERNEL);
+
+	if (!brightness_change)
+		return -ENOMEM;
+
+	brightness_change->led_cdev = led_cdev;
+	brightness_change->value = value;
+
+	INIT_WORK(&(brightness_change->brightness_change_work),
+		change_brightness);
+	queue_work(suspend_work_queue,
+		&(brightness_change->brightness_change_work));
+
+	return 0;
+}
+
+#endif
+
 static void led_update_brightness(struct led_classdev *led_cdev)
 {
+#ifdef __BCM21553_LED_DEBUG__
+	printk("[LEDClass] %s\n", __func__ );
+#endif
+
 	if (led_cdev->brightness_get)
+	{
 		led_cdev->brightness = led_cdev->brightness_get(led_cdev);
+#ifdef __LEDCLASS_DEBUG__
+		printk("[LEDClass] %s get brightness : %d\n", __func__ ,led_cdev->brightness);
+#endif	
+	}
 }
 
 static ssize_t led_brightness_show(struct device *dev, 
 		struct device_attribute *attr, char *buf)
 {
+#ifdef __LEDCLASS_DEBUG__
+	printk("[LEDClass] %s\n", __func__ );
+#endif
 	struct led_classdev *led_cdev = dev_get_drvdata(dev);
 
 	/* no lock needed for this */
@@ -44,6 +105,9 @@ static ssize_t led_brightness_show(struct device *dev,
 static ssize_t led_brightness_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
 {
+#ifdef __LEDCLASS_DEBUG__
+	printk("[LEDClass] %s\n", __func__ );
+#endif
 	struct led_classdev *led_cdev = dev_get_drvdata(dev);
 	ssize_t ret = -EINVAL;
 	char *after;
@@ -67,13 +131,16 @@ static ssize_t led_brightness_store(struct device *dev,
 static ssize_t led_max_brightness_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
+#ifdef __LEDCLASS_DEBUG__
+	printk("[LEDClass] %s\n", __func__ );
+#endif
 	struct led_classdev *led_cdev = dev_get_drvdata(dev);
 
 	return sprintf(buf, "%u\n", led_cdev->max_brightness);
 }
 
 static struct device_attribute led_class_attrs[] = {
-	__ATTR(brightness, 0644, led_brightness_show, led_brightness_store),
+	__ATTR(brightness, 0664, led_brightness_show, led_brightness_store),
 	__ATTR(max_brightness, 0444, led_max_brightness_show, NULL),
 #ifdef CONFIG_LEDS_TRIGGERS
 	__ATTR(trigger, 0644, led_trigger_show, led_trigger_store),
@@ -87,6 +154,9 @@ static struct device_attribute led_class_attrs[] = {
  */
 void led_classdev_suspend(struct led_classdev *led_cdev)
 {
+#ifdef __LEDCLASS_DEBUG__
+	printk("[LEDClass] %s\n", __func__ );
+#endif
 	led_cdev->flags |= LED_SUSPENDED;
 	led_cdev->brightness_set(led_cdev, 0);
 }
@@ -98,6 +168,9 @@ EXPORT_SYMBOL_GPL(led_classdev_suspend);
  */
 void led_classdev_resume(struct led_classdev *led_cdev)
 {
+#ifdef __LEDCLASS_DEBUG__
+	printk("[LEDClass] %s\n", __func__ );
+#endif
 	led_cdev->brightness_set(led_cdev, led_cdev->brightness);
 	led_cdev->flags &= ~LED_SUSPENDED;
 }
@@ -105,6 +178,9 @@ EXPORT_SYMBOL_GPL(led_classdev_resume);
 
 static int led_suspend(struct device *dev, pm_message_t state)
 {
+#ifdef __LEDCLASS_DEBUG__
+	printk("[LEDClass] %s\n", __func__ );
+#endif
 	struct led_classdev *led_cdev = dev_get_drvdata(dev);
 
 	if (led_cdev->flags & LED_CORE_SUSPENDRESUME)
@@ -115,6 +191,9 @@ static int led_suspend(struct device *dev, pm_message_t state)
 
 static int led_resume(struct device *dev)
 {
+#ifdef __LEDCLASS_DEBUG__
+	printk("[LEDClass] %s\n", __func__ );
+#endif
 	struct led_classdev *led_cdev = dev_get_drvdata(dev);
 
 	if (led_cdev->flags & LED_CORE_SUSPENDRESUME)
@@ -130,6 +209,9 @@ static int led_resume(struct device *dev)
  */
 int led_classdev_register(struct device *parent, struct led_classdev *led_cdev)
 {
+#ifdef __LEDCLASS_DEBUG__
+	printk("[LEDClass] %s\n", __func__ );
+#endif
 	led_cdev->dev = device_create(leds_class, parent, 0, led_cdev,
 				      "%s", led_cdev->name);
 	if (IS_ERR(led_cdev->dev))
@@ -168,6 +250,9 @@ EXPORT_SYMBOL_GPL(led_classdev_register);
  */
 void led_classdev_unregister(struct led_classdev *led_cdev)
 {
+#ifdef __LEDCLASS_DEBUG__
+	printk("[LEDClass] %s\n", __func__ );
+#endif
 #ifdef CONFIG_LEDS_TRIGGERS
 	down_write(&led_cdev->trigger_lock);
 	if (led_cdev->trigger)
@@ -185,6 +270,9 @@ EXPORT_SYMBOL_GPL(led_classdev_unregister);
 
 static int __init leds_init(void)
 {
+#ifdef __LEDCLASS_DEBUG__
+	printk("[LEDClass] %s\n", __func__ );
+#endif
 	leds_class = class_create(THIS_MODULE, "leds");
 	if (IS_ERR(leds_class))
 		return PTR_ERR(leds_class);
