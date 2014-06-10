@@ -64,6 +64,9 @@ static long alarm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	struct timespec new_alarm_time;
 	struct timespec new_rtc_time;
 	struct timespec tmp_time;
+#if defined(CONFIG_RTC_CHN_ALARM_BOOT)
+	char bootalarm_data[14]; 
+#endif
 	enum android_alarm_type alarm_type = ANDROID_ALARM_IOCTL_TO_TYPE(cmd);
 	uint32_t alarm_type_mask = 1U << alarm_type;
 
@@ -160,6 +163,16 @@ from_old_alarm_set:
 		if (rv < 0)
 			goto err1;
 		break;
+#if defined(CONFIG_RTC_CHN_ALARM_BOOT)
+	case ANDROID_ALARM_SET_ALARM:
+		if (copy_from_user(bootalarm_data, (void __user *)arg, 14)) {
+			printk("%s error!\n", __func__);
+			rv = -EFAULT;
+			goto err1;
+		}
+		rv = alarm_set_alarm(bootalarm_data);
+		break; 
+#endif
 	case ANDROID_ALARM_GET_TIME(0):
 		switch (alarm_type) {
 		case ANDROID_ALARM_RTC_WAKEUP:
