@@ -342,13 +342,13 @@ config TOUCHSCREEN_MMS128
 	tristate "Melfas touchscreen"
 	depends on I2C
 	help
-	  This enables support for Synaptics RMI over I2C based touchscreens.
+	  This enables support for Melfas MMS128 touchscreens.
 
 config TOUCHSCREEN_MMS128_REV04
 	tristate "Melfas touchscreen"
 	depends on I2C
 	help
-	  This enables support for Synaptics RMI over I2C based touchscreens.
+	  This enables support for Melfas MMS128 touchscreens.
 
 config TOUCHSCREEN_TOUCHRIGHT
 	tristate "Touchright serial touchscreen"
@@ -723,11 +723,22 @@ config TOUCHSCREEN_F760
 	  To compile this driver as a module, choose M here: the
 	  module will be called tsc2017.
 
-	  
+config TOUCHSCREEN_MMS128_TASSVE
+	tristate "Melfas touchscreen"
+	depends on I2C
+	help
+	  This enables support for Melfas MMS128 touchscreens.(TassVE Only)
+
+config TOUCHSCREEN_MMS128_COOPERVE
+	tristate "Melfas touchscreen"
+	depends on I2C
+	help
+	  This enables support for Melfas MMS128 touchscreens.(CooperVE Only)
+
 config TOUCHSCREEN_MMS128_TASSCOOPER
 	tristate "Melfas touchscreen"
 	depends on I2C
 	help
-	  This enables support for Synaptics RMI over I2C based touchscreens.
+	  This enables support for Melfas MMS128 touchscreens(TassVE&CooperVE Common).
 
 endif

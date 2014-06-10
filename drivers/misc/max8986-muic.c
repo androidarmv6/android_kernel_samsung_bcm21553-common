@@ -114,6 +114,21 @@ pmu_muic_chgtyp max8986_muic_get_charger_type()
 }
 EXPORT_SYMBOL(max8986_muic_get_charger_type);
 
+#if defined(CONFIG_TOUCHSCREEN_MMS128_TASSCOOPER)
+u8 g_charger_type = PMU_MUIC_CHGTYP_NONE;
+u8 g_charger_adc = PMU_MUIC_ADC_OUTPUT_GND;
+u8 max8986_muic_charger_type()
+{
+	return g_charger_type;
+}
+EXPORT_SYMBOL(max8986_muic_charger_type);
+u8 max8986_muic_charger_adc()
+{
+	return g_charger_adc;
+}
+EXPORT_SYMBOL(max8986_muic_charger_adc);
+#endif
+
 static void max8986_muic_adc_isr(int intr, void *data)
 {
 	u8 status1,reg_ctrl1;
@@ -124,6 +139,14 @@ static void max8986_muic_adc_isr(int intr, void *data)
 	max8986->read_dev(max8986, MAX8986_MUIC_REG_STATUS1, &status1);
 	adc_val = MAX8986_M_STATUS1_ADC_MASK & status1;
 	pr_info("%s: adc_val = %x\n",__func__,adc_val);
+#if defined(CONFIG_TOUCHSCREEN_MMS128_TASSCOOPER)
+	g_charger_adc = adc_val;
+    pr_info("[TSP] %s: g_charger_adc = %x\n",__func__,g_charger_adc);
+	if(adc_val == PMU_MUIC_ADC_OUTPUT_200K )
+	{
+			pr_info("[TSP] %s:PMU_MUIC_ADC_OUTPUT_200K\n",__func__);
+	}
+#endif
 
 	if(adc_val == PMU_MUIC_ADC_OUTPUT_OPEN)
 	{
@@ -233,6 +256,12 @@ static void max8986_muic_chgtype_isr(int intr, void *data)
 		pr_info("%s: ERROR -- unknown charger type..... ", __func__);
 		return;
 	}
+
+#if defined(CONFIG_TOUCHSCREEN_MMS128_TASSCOOPER)
+	g_charger_type = type;
+    pr_info("[TSP] %s: g_charger_type = %x\n",__func__,g_charger_type);
+#endif
+
 	max8986_muic->charger_type = type;
 	CALL_EVENT_HANDLER(MAX8986_MUIC_EVENT_CHARGER_TYPE,type);
 }

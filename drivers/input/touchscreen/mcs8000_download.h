@@ -148,7 +148,7 @@ int mcsdl_download_binary_file(void); // with binary type .bin file.
 #if MELFAS_ENABLE_DELAY_TEST
 void mcsdl_delay_test(INT32 nCount);
 #endif
-int mms100_ISC_download_binary_data(void);
+int mms100_ISC_download_binary_data(int hw_ver);
 
 
 //---------------------------------

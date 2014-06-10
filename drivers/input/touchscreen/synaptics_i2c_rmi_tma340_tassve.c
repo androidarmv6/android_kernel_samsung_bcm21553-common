@@ -33,6 +33,8 @@
 #include <linux/firmware.h>
 #include <linux/uaccess.h> 
 /* firmware - update */
+#define __TASS_WORKFUNC__
+#define __TASS_CHECKIC__
 
 #define MAX_X	240 
 #define MAX_Y	320
@@ -43,6 +45,16 @@
 #define MAX_KEYS	2
 #define MAX_USING_FINGER_NUM 2
 
+#if defined(__TASS_CHECKIC__)
+static int prev_wdog_val = -1;
+static int check_ic_counter = 3;
+#endif
+static const int touchkey_keycodes[] = {
+			KEY_MENU,
+			KEY_BACK,
+			//KEY_HOME,
+			//KEY_SEARCH,
+};
 #define TOUCH_ON 1
 #define TOUCH_OFF 0
 
@@ -62,18 +74,46 @@ static struct regulator *touch_regulator=NULL;
 static struct workqueue_struct *synaptics_wq;
 #endif
 
+static int touchkey_status[MAX_KEYS];
+
+#define TK_STATUS_PRESS		1
+#define TK_STATUS_RELEASE		0
+#define FINGER_PRESS 1
+#define FINGER_RELEASE 1
+
 int tsp_irq;
 
 typedef struct
 {
 	int8_t id;	/*!< (id>>8) + size */
+#ifndef  __NEW_WORKFUNC__		
 	int8_t status;/////////////IC
+#endif
 	int8_t z;	/*!< dn>0, up=0, none=-1 */
 	int16_t x;			/*!< X */
 	int16_t y;			/*!< Y */
 } report_finger_info_t;
 
+#if defined (__TASS_WORKFUNC__)
+static report_finger_info_t fingerInfo[MAX_USING_FINGER_NUM+1]={0,};
+#elif defined  (__NEW_WORKFUNC__)
+typedef struct
+{
+	int8_t status;/////////////IC
+	int8_t prev_status;
+	int8_t z;	/*!< dn>0, up=0, none=-1 */
+	int16_t x;			/*!< X */
+	int16_t y;			/*!< Y */
+} saved_finger_info_t;
+
+#define MAX_USING_FINGER_ID 0x0f
+static report_finger_info_t fingerInfo[MAX_USING_FINGER_NUM]={0,};		// finger2
+static saved_finger_info_t fingerInfo_bak[MAX_USING_FINGER_ID+1]={0,};	
+static int prev_finger[MAX_USING_FINGER_NUM] ={0,};
+
+#else
 static report_finger_info_t fingerInfo[MAX_USING_FINGER_NUM]={0,};
+#endif
 
 struct synaptics_ts_data {
 	uint16_t addr;
@@ -83,6 +123,9 @@ struct synaptics_ts_data {
 	struct hrtimer timer;				////////////////////////IC
 	struct work_struct  work;
 	//struct work_struct  work_timer;		////////////////////////IC
+	struct hrtimer timer2;	
+	struct work_struct work2;
+
 	struct early_suspend early_suspend;
 };
 
@@ -99,9 +142,9 @@ unsigned char now_tst200_update_luisa = 0;
 unsigned char tsp_special_update = 0;
 
 /* touch information*/
-unsigned char touch_vendor_id;
-unsigned char touch_hw_ver;
-unsigned char touch_sw_ver;
+unsigned char touch_vendor_id=0;
+unsigned char touch_hw_ver=0;
+unsigned char touch_sw_ver=0;
 
 #define TSP_VENDER_ID	0x0A
 #define TSP_HW_VER1		0x11
@@ -115,10 +158,19 @@ int g_touch_info_x = 0;
 int g_touch_info_y = 0;
 int g_touch_info_press = 0;
 
+#if defined (__TOUCH_TA_CHECK__)		// for AT&T Charger
+static u8 pre_charger_type = 0;
+extern u8 g_charger_type;
+//static u8 pre_charger_adc = 0;
+//extern u8 g_charger_adc;
+#endif
+
+static struct workqueue_struct *check_ic_wq;
 
 int firm_update( void );
-extern int cypress_update( int );
+//extern int cypress_update( int );
 int tsp_i2c_read(u8 reg, unsigned char *rbuf, int buf_size);
+int tsp_i2c_write(u8 reg, unsigned char *rbuf, int buf_size);
 
 
 /* sys fs */
@@ -135,7 +187,7 @@ static DEVICE_ATTR(firmware	, 0444, firmware_show, firmware_store);
 static DEVICE_ATTR(firmware_ret	, 0444, firmware_ret_show, firmware_ret_store);
 /* sys fs */
 
-static int tsp_testmode = 0;
+//static int tsp_testmode = 0;
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static void synaptics_ts_early_suspend(struct early_suspend *h);
@@ -148,9 +200,7 @@ extern int set_irq_type(unsigned int irq, unsigned int type);
 
 #if defined (CONFIG_TOUCHSCREEN_MMS128_TASSCOOPER)
 extern int Is_MMS128_Connected(void);
-#endif
 
-#if defined (CONFIG_TOUCHSCREEN_MMS128_TASSCOOPER)
 int Is_Synaptics_Connected(void)
 {
     return (int) Synaptics_Connected;
@@ -173,38 +223,329 @@ EXPORT_SYMBOL(touch_ctrl_regulator);
 
 int tsp_reset( void )
 {
-	int ret=1;
+	int ret=1, key=0;
 
       #if defined(__TOUCH_DEBUG__)
 	printk("[TSP] %s, %d\n", __func__, __LINE__ );
       #endif 
       
+	// for TSK
+	for(key = 0; key < MAX_KEYS ; key++)
+		touchkey_status[key] = TK_STATUS_RELEASE;
+
 	if (ts_global->use_irq)
 	{
 		disable_irq(ts_global->client->irq);
 	}
 
-	touch_ctrl_regulator(0);
+	touch_ctrl_regulator(TOUCH_OFF);
 
 	gpio_direction_output( TSP_SCL , 0 ); 
 	gpio_direction_output( TSP_SDA , 0 ); 
-	//gpio_direction_output( TSP_INT , 0 ); 
+	gpio_direction_output( TSP_INT , 0 ); 
 
-	msleep(200);
+	msleep(500);
 
 	gpio_direction_output( TSP_SCL , 1 ); 
 	gpio_direction_output( TSP_SDA , 1 ); 
-	//gpio_direction_output( TSP_INT , 1 ); 
+	gpio_direction_input(TSP_INT);
+	bcm_gpio_pull_up_down_enable(TSP_INT, false);
 
-	touch_ctrl_regulator(1);
+	touch_ctrl_regulator(TOUCH_ON);
 
-	msleep(10);
+	//msleep(10);
+	msleep(200);
 
 	enable_irq(ts_global->client->irq);
 
 	return ret;
 }
 
+
+
+#ifdef __NEW_WORKFUNC__
+static void release_all_fingers(void)
+{
+    int i;
+	int temp_cnt=0;
+
+	for (i = 0; i < MAX_USING_FINGER_NUM; i++)
+	{
+		if(fingerInfo_bak[prev_finger[i]].status ==1)
+		{
+			fingerInfo_bak[prev_finger[i]].status = 0; // force release
+
+			input_report_abs(ts_global->input_dev, ABS_MT_TRACKING_ID, i);		
+			input_report_abs(ts_global->input_dev, ABS_MT_POSITION_X, fingerInfo_bak[prev_finger[i]].x);
+			input_report_abs(ts_global->input_dev, ABS_MT_POSITION_Y, fingerInfo_bak[prev_finger[i]].y);
+			input_report_abs(ts_global->input_dev, ABS_MT_TOUCH_MAJOR, 0);
+			input_report_abs(ts_global->input_dev, ABS_MT_WIDTH_MAJOR, 0);
+			input_mt_sync(ts_global->input_dev);
+#ifdef __TOUCH_DEBUG__
+			printk("[TSP] force release\n");
+#endif
+			temp_cnt++;
+		}
+
+		fingerInfo_bak[prev_finger[i]].x = 0;
+		fingerInfo_bak[prev_finger[i]].y = 0;
+		fingerInfo_bak[prev_finger[i]].z = 0;
+		fingerInfo_bak[prev_finger[i]].status= 0;
+		fingerInfo_bak[prev_finger[i]].prev_status= 0;
+
+		prev_finger[i] = 0;
+	}
+	if(temp_cnt>0)
+		input_sync(ts_global->input_dev);
+}
+
+
+#else
+//static void TSP_forced_release_forkey(void)
+static void release_all_fingers(void)
+{
+	int i;
+	int temp_cnt=0;
+
+    for (i = 0; i < MAX_USING_FINGER_NUM; i++)
+    {
+		if(fingerInfo[i].id >=1)
+		{
+			fingerInfo[i].status = -2; // force release
+		}
+
+		if(fingerInfo[i].status != -2) continue;
+		
+		input_report_abs(ts_global->input_dev, ABS_MT_TRACKING_ID, fingerInfo[i].id);		
+		input_report_abs(ts_global->input_dev, ABS_MT_POSITION_X, fingerInfo[i].x);
+		input_report_abs(ts_global->input_dev, ABS_MT_POSITION_Y, fingerInfo[i].y);
+		input_report_abs(ts_global->input_dev, ABS_MT_TOUCH_MAJOR, 0);
+		input_report_abs(ts_global->input_dev, ABS_MT_WIDTH_MAJOR, 0);
+		input_mt_sync(ts_global->input_dev);
+#ifdef __TOUCH_DEBUG__
+		printk("[TSP] force release\n");
+#endif
+		temp_cnt++;		
+    }
+	if(temp_cnt>0)
+    input_sync(ts_global->input_dev);
+}
+#endif
+
+
+
+/*
+static void process_key_event(uint8_t tsk_msg)
+{
+	int i;
+	int keycode= 0;
+	int st_new;
+
+        printk("[TSP] process_key_event : %d\n", tsk_msg);
+
+	if(	tsk_msg	== 0)
+	{
+		input_report_key(ts_global->input_dev, st_old, 0);
+#ifdef __TOUCH_DEBUG__
+		printk("[TSP] release keycode: %4d, keypress: %4d\n", st_old, 0);
+#endif
+	}
+	else{
+	//check each key status
+		for(i = 0; i < MAX_KEYS; i++)
+		{
+
+		st_new = (tsk_msg>>(i)) & 0x1;
+		if (st_new ==1)
+		{
+		keycode = touchkey_keycodes[i];
+		input_report_key(ts_global->input_dev, keycode, 1);
+#ifdef __TOUCH_DEBUG__
+		printk("[TSP] press keycode: %4d, keypress: %4d\n", keycode, 1);
+#endif
+		}
+
+		st_old = keycode;
+
+
+		}
+	}
+}
+*/
+static void process_key_event(uint8_t tsk_msg)
+{
+	int i;
+	int keycode= 0;
+	int st_old, st_new;
+
+	//check each key status
+	for(i = 0; i < MAX_KEYS; i++)
+	{
+		st_old = touchkey_status[i];
+		st_new = (tsk_msg>>i) & 0x1;
+		keycode = touchkey_keycodes[i];
+
+		touchkey_status[i] = st_new;	// save status
+
+		if(st_new > st_old)
+		{
+			// press event
+#ifdef __TOUCH_DEBUG__			
+			printk("[TSP] press keycode: %4d, keypress: %4d\n", keycode, 1);
+#endif
+			input_report_key(ts_global->input_dev, keycode, TK_STATUS_PRESS);
+		}
+		else if(st_old > st_new)
+		{
+			// release event
+#ifdef __TOUCH_DEBUG__				
+			printk("[TSP] release keycode: %4d, keypress: %4d\n", keycode, 0);
+#endif
+			input_report_key(ts_global->input_dev, keycode, TK_STATUS_RELEASE);
+		}
+	}
+
+}
+
+
+#if defined (__TOUCH_TA_CHECK__)		// for AT&T Charger
+
+/*
+typedef enum  {
+	PMU_MUIC_CHGTYP_NONE,
+	PMU_MUIC_CHGTYP_USB,
+	PMU_MUIC_CHGTYP_DOWNSTREAM_PORT,
+	PMU_MUIC_CHGTYP_DEDICATED_CHGR,
+	PMU_MUIC_CHGTYP_SPL_500MA,
+	PMU_MUIC_CHGTYP_SPL_1A,
+	PMU_MUIC_CHGTYP_RESERVED,
+	PMU_MUIC_CHGTYP_DEAD_BATT_CHG,
+
+	PMU_MUIC_CHGTYP_INIT
+}pmu_muic_chgtyp;
+*/
+
+/*
+  0x01 : normal charger
+  0x02 : AT&T charger
+  0x00 : not connected
+  0xff : need to check TA
+*/
+
+static bool b_Firmware_store = false;
+
+int set_tsp_for_ta_detect(u8 state)
+{
+	int ret = 0;
+	u8 temp_type;
+	//u8 buf[2], temp_type;
+
+	uint8_t i2c_addr = 0x00;
+	uint8_t wdog_val[1];
+	
+	ret = tsp_i2c_read( i2c_addr, wdog_val, sizeof(wdog_val));
+	if(ret == 0)
+	{
+		printk("[TSP] i2c failed\n");
+	}
+
+	temp_type = pre_charger_type;
+	pre_charger_type = state;	
+
+	if( state == PMU_MUIC_CHGTYP_NONE )
+	{
+		//printk("[TSP] [2] set_tsp_for_ta_detect!!! state=0\n");	
+		wdog_val[0] = wdog_val[0] & ~(1 << 3);
+	}
+	else
+	{
+		//printk("[TSP] [1] set_tsp_for_ta_detect!!! state=1\n");
+		wdog_val[0] = wdog_val[0] | (1 << 3);
+	}
+
+	printk("[TSP][Synaptics][%s] set : %d, %d !\n", __func__, state, wdog_val[0]);	
+	ret = tsp_i2c_write( i2c_addr, wdog_val, sizeof(wdog_val));
+
+	if(ret != 1)
+	{
+		printk(KERN_DEBUG "[TSP][Synaptics][%s] synaptics_i2c_write() failed\n [%d]", __func__, ret);
+		pre_charger_type = temp_type;
+	}
+
+	return ret;
+
+}
+
+#endif
+
+
+/* additional TS work */
+static void check_ic_work_func(struct work_struct *work)
+{
+#ifdef __TASS_CHECKIC__
+	int ret = 0;
+	uint8_t i2c_addr = 0x1F;
+	uint8_t wdog_val[1];
+#endif
+
+// for empty routine!!
+#if !defined (__TOUCH_TA_CHECK__)
+	volatile int a;
+	a=0;
+#endif
+
+#if defined (__TOUCH_TA_CHECK__)		// for AT&T Charger
+	if(pre_charger_type != g_charger_type)
+	{
+		if( !b_Firmware_store )
+			set_tsp_for_ta_detect(g_charger_type);
+	}
+#endif
+
+#ifdef __TASS_CHECKIC__
+	if(check_ic_counter == 0)
+	{
+		ret = tsp_i2c_read( i2c_addr, wdog_val, sizeof(wdog_val));
+		if (ret <= 0) {
+			tsp_reset();
+			printk("[TSP] i2c failed : ret=%d, ln=%d\n",ret, __LINE__);
+		}
+		else if(wdog_val[0] == (uint8_t)prev_wdog_val || wdog_val[0] == 0x0 ||wdog_val[0] == 0xff)
+		{
+			printk("[TSP] %s tsp_reset counter = %x, prev = %x\n", __func__, wdog_val[0], (uint8_t)prev_wdog_val);
+			tsp_reset();
+			prev_wdog_val = -1;
+		}
+		else
+		{
+//			printk("[TSP] %s counter = %x, prev = %x\n", __func__, wdog_val[0], (uint8_t)prev_wdog_val);
+			prev_wdog_val = wdog_val[0];
+		}
+		
+		check_ic_counter = 3;	
+	}
+	else
+	{
+		check_ic_counter--;
+	}
+
+
+#endif
+
+          return;
+}
+
+static enum hrtimer_restart synaptics_watchdog_timer_func(struct hrtimer *timer)
+{
+	queue_work(check_ic_wq, &ts_global->work2);
+
+	hrtimer_start(&ts_global->timer2, ktime_set(0, 500000000), HRTIMER_MODE_REL);
+	return HRTIMER_NORESTART;
+}
+
+#ifndef  __NEW_WORKFUNC__
+#define ABS(a,b) ( (a)>(b) ? ((a)-(b)) : ((b)-(a)) )
+#endif
 #if USE_THREADED_IRQ
 static irqreturn_t synaptics_ts_work_func(int irq, void *dev_id)
 #else
@@ -213,9 +554,20 @@ static void synaptics_ts_work_func(struct work_struct *work)
 {
 	int ret=0;
 	uint8_t buf[12];// 02h ~ 0Dh
+	//uint8_t buf_key[1];
+	uint8_t buf_key;
 	uint8_t i2c_addr = 0x02;
-	int i = 0;
+	int i, j;
 	int finger = 0;
+
+	static uint8_t prev_key = 0;
+	int event_cnt = 0;
+#ifdef __NEW_WORKFUNC__
+	int current_finger[MAX_USING_FINGER_NUM] = {0,};
+	int current_cnt = 0;
+#endif	
+
+#if 1
 
 #if USE_THREADED_IRQ
 	struct synaptics_ts_data *ts = dev_id;
@@ -223,6 +575,7 @@ static void synaptics_ts_work_func(struct work_struct *work)
 	struct synaptics_ts_data *ts = container_of(work, struct synaptics_ts_data, work);
 #endif
 
+	memset(buf, 0, sizeof(buf));
 	ret = tsp_i2c_read( i2c_addr, buf, sizeof(buf));
 
 	if (ret <= 0) {
@@ -230,8 +583,22 @@ static void synaptics_ts_work_func(struct work_struct *work)
 		goto work_func_out;
 	}
 
-	finger = buf[0] & 0x07;	
+	// touch key check! ============================//
+	buf_key = (buf[0] & 0xC0) >> 6; //information of touch key
+#if defined(__TOUCH_DEBUG__)
+	//printk("prev_key = %x, buf_key = %x\n", prev_key, buf_key);
+#endif
+	if( prev_key != buf_key)
+	{
+		process_key_event(buf_key);
+		prev_key = buf_key;
+		goto work_func_out;
+	}
+	//========================================//
+
+	finger = buf[0] & 0x0F;	//number of touch finger
 	
+#if 0	
 	fingerInfo[0].x = (buf[1] << 8) |buf[2];
 	fingerInfo[0].y = (buf[3] << 8) |buf[4];
 	fingerInfo[0].z = buf[5];
@@ -241,6 +608,17 @@ static void synaptics_ts_work_func(struct work_struct *work)
 	fingerInfo[1].y = (buf[9] << 8) |buf[10];
 	fingerInfo[1].z = buf[11];
 	fingerInfo[1].id = buf[6] & 0xf;
+#else
+	fingerInfo[0].x = (buf[1] << 8) |buf[2];
+	fingerInfo[0].y = (buf[3] << 8) |buf[4];
+	fingerInfo[0].z = buf[5]/2;
+	fingerInfo[0].id = (buf[6] >>4)& 0x0f;
+
+	fingerInfo[1].x = (buf[7] << 8) |buf[8];
+	fingerInfo[1].y = (buf[9] << 8) |buf[10];
+	fingerInfo[1].z = buf[11]/2;
+	fingerInfo[1].id = buf[6] & 0x0f;
+#endif	
 
 /*********************hash
 	if ( board_hw_revision >= 0x2 && HW_ver==1 )
@@ -262,30 +640,242 @@ static void synaptics_ts_work_func(struct work_struct *work)
 	/* check key event*/
 //	if(fingerInfo[0].status != 1 && fingerInfo[1].status != 1)	//
 //		process_key_event(buf[0]);								//HASHTSK
+//	if(finger == 0)
+//	{
+//		process_key_event(buf_key[0]);
+//	}
+
+
+#if defined (__TASS_WORKFUNC__)
 
 	/* check touch event */
 	for ( i= 0; i<MAX_USING_FINGER_NUM; i++ )
 	{
-		//////////////////////////////////////////////////IC
-		if(fingerInfo[i].id >=1)
+		if(fingerInfo[i].id >=1) // press interrupt
 		{
+			if(i==0 && fingerInfo[1].status != 1)
+			{
+				if((fingerInfo[2].id != fingerInfo[0].id)&&(fingerInfo[2].id != 0))// no release with finger id change
+				{
+		//			if(fingerInfo[1].id ==0)
+		{
+						input_report_abs(ts->input_dev, ABS_MT_POSITION_X, fingerInfo[2].x);	
+						input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, fingerInfo[2].y);
+						input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, 0);
+						input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, fingerInfo[2].z);
+						input_mt_sync(ts->input_dev);
+						input_sync(ts->input_dev);
+
+#if defined(__TOUCH_DEBUG__)
+						printk("[TSP] [%d] 0 (%d,	%d,	%x)\n", i, fingerInfo[2].x, fingerInfo[2].y, fingerInfo[2].z);
+#endif
+						fingerInfo[1].status = -1;
+					}
+				}
+				else if(fingerInfo[2].id != 0) // check x or y jump with same finger id
+				{
+					
+					if(ABS(fingerInfo[2].x,fingerInfo[0].x)>180)
+					{
+						input_report_abs(ts->input_dev, ABS_MT_POSITION_X, fingerInfo[2].x);	
+						input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, fingerInfo[2].y);
+						input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, 0);
+						input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, fingerInfo[2].z);
+						input_mt_sync(ts->input_dev);
+						input_sync(ts->input_dev);
+
+#if defined(__TOUCH_DEBUG__)
+						printk("[TSP] [%d] 0 (%d,	%d,	%x)\n", i, fingerInfo[2].x, fingerInfo[2].y, fingerInfo[2].z);
+#endif
+						fingerInfo[1].status = -1;	
+					}
+					else if(ABS(fingerInfo[2].y,fingerInfo[0].y)>180)
+					{
+						input_report_abs(ts->input_dev, ABS_MT_POSITION_X, fingerInfo[2].x);	
+						input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, fingerInfo[2].y);
+						input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, 0);
+						input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, fingerInfo[2].z);
+						input_mt_sync(ts->input_dev);
+						input_sync(ts->input_dev);
+
+#if defined(__TOUCH_DEBUG__)
+						printk("[TSP] [%d] 0 (%d,	%d,	%x)\n", i, fingerInfo[2].x, fingerInfo[2].y, fingerInfo[2].z);
+#endif
+						fingerInfo[1].status = -1;	
+					}
+					else // no jump
+					{
+						if(fingerInfo[i].status != -2) // force release
 			fingerInfo[i].status = 1;
+						else
+							fingerInfo[i].status = -2;
 		}
-		else if(fingerInfo[i].id ==0 && fingerInfo[i].status == 1)
+				}
+				else // single touch with normal condition
 		{
+					if(fingerInfo[i].status != -2) // force release
+						fingerInfo[i].status = 1;
+					else
+						fingerInfo[i].status = -2;
+				}
+			}
+			else
+			{
+				if(fingerInfo[i].status != -2) // force release
+					fingerInfo[i].status = 1;
+				else
+					fingerInfo[i].status = -2;
+			}
+		}
+		else if(fingerInfo[i].id ==0) // release interrupt (only first finger)
+		{
+			if(fingerInfo[i].status == 1) // prev status is press
 			fingerInfo[i].status = 0;
+			else if(fingerInfo[i].status == 0 || fingerInfo[i].status == -2) // release already or force release
+				fingerInfo[i].status = -1;				
 		}
-		else if(fingerInfo[i].id ==0 && fingerInfo[i].status == 0)
+
+		if(fingerInfo[i].status < 0) continue;
+		
+		input_report_abs(ts->input_dev, ABS_MT_POSITION_X, fingerInfo[i].x);
+		input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, fingerInfo[i].y);
+		input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, fingerInfo[i].status);
+		input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, fingerInfo[i].z);
+		input_mt_sync(ts->input_dev);
+
+#if defined(__TOUCH_DEBUG__)
+		printk("[TSP] [%d] %d (%d,	%d,	%x)		%x\n", i, fingerInfo[i].id, fingerInfo[i].x, fingerInfo[i].y, fingerInfo[i].z, fingerInfo[i].status);		
+#endif
+	}
+
+
+
+//	printk("\n");
+//	printk("%d	%d\n", fingerInfo[0].status, fingerInfo[1].status);
+	input_sync(ts->input_dev);
+	
+	fingerInfo[2].x = fingerInfo[0].x;
+	fingerInfo[2].y = fingerInfo[0].y;
+	fingerInfo[2].z = fingerInfo[0].z;
+	fingerInfo[2].id = fingerInfo[0].id;	
+
+#elif defined (__NEW_WORKFUNC__)		// temporary code, need to modify
+	/* check touch event */
+	for ( i= 0; i<MAX_USING_FINGER_NUM; i++ )
+	{
+		
+		if(fingerInfo[i].id >0 && fingerInfo[i].id <= MAX_USING_FINGER_ID ) // vaild press interrupt
 		{
+			// prev finger check
+			if(fingerInfo_bak[fingerInfo[i].id].prev_status == 1)	// prev finger pressed!!
+			{
+				// id changed!! need to release prev finger
+				if( ABS(fingerInfo_bak[fingerInfo[i].id].x, fingerInfo[i].x)>180
+					|| ABS(fingerInfo_bak[fingerInfo[i].id].y, fingerInfo[i].y)>180 )
+		{
+					input_report_abs(ts->input_dev, ABS_MT_TRACKING_ID, fingerInfo[i].id);			
+					input_report_abs(ts->input_dev, ABS_MT_POSITION_X, fingerInfo_bak[fingerInfo[i].id].x);	
+					input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, fingerInfo_bak[fingerInfo[i].id].y);
+					input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, 0);
+					input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, 0);				
+					input_mt_sync(ts->input_dev);
+					input_sync(ts->input_dev);	
+
+#if defined(__TOUCH_DEBUG__)
+					printk("[TSP] T1 i[%d] id[%d] xyz[%d, %d, %x]\n", i, fingerInfo[i].id, fingerInfo_bak[fingerInfo[i].id].x, 
+							fingerInfo_bak[fingerInfo[i].id].y, 0);	
+#endif
+				}
+			}
+			
+			// send axis event
+			input_report_abs(ts->input_dev, ABS_MT_TRACKING_ID, fingerInfo[i].id);
+			input_report_abs(ts->input_dev, ABS_MT_POSITION_X, fingerInfo[i].x);
+			input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, fingerInfo[i].y);	
+			input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, fingerInfo[i].z);
+			input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, 10);
+			input_mt_sync(ts->input_dev);
+
+#if defined(__TOUCH_DEBUG__)
+			printk("[TSP] T2 i[%d] id[%d] xyz[%d, %d, %x]\n", i, fingerInfo[i].id, fingerInfo[i].x, 
+					fingerInfo[i].y, fingerInfo[i].z);	
+#endif			
+
+			//pushed_check[fingerInfo[i].id] = true;
+			event_cnt ++;
+			// backup finger data
+			fingerInfo_bak[fingerInfo[i].id].x = fingerInfo[i].x;
+			fingerInfo_bak[fingerInfo[i].id].y = fingerInfo[i].y;
+			fingerInfo_bak[fingerInfo[i].id].z = fingerInfo[i].z;
+			fingerInfo_bak[fingerInfo[i].id].status = FINGER_PRESS;		// key pressed	
+			fingerInfo_bak[fingerInfo[i].id].prev_status = FINGER_PRESS;	// for next state	
+			
+			current_finger[current_cnt++]=fingerInfo[i].id;
+		}
+	}
+
+
+	for ( j = 0; j < MAX_USING_FINGER_NUM; j++ )
+	{
+		if( prev_finger[j] )
+		{
+			if ( fingerInfo_bak[prev_finger[j]].status == FINGER_RELEASE )		// prev key release!!
+			{
+				input_report_abs(ts->input_dev, ABS_MT_TRACKING_ID, prev_finger[j]);
+				input_report_abs(ts->input_dev, ABS_MT_POSITION_X, fingerInfo_bak[prev_finger[j]].x);
+				input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, fingerInfo_bak[prev_finger[j]].y);	
+				input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, 0);
+				input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, 0);
+				input_mt_sync(ts->input_dev);
+				
+#if defined(__TOUCH_DEBUG__)
+				printk("[TSP] T3 j[%d] id[%d] xyz[%d, %d, %x]\n", j, prev_finger[j], fingerInfo_bak[prev_finger[j]].x, 
+						fingerInfo_bak[prev_finger[j]].y, 0);	
+#endif					
+				event_cnt ++;			
+				fingerInfo_bak[prev_finger[j]].prev_status = FINGER_RELEASE;
+			}
+			else
+			{
+				fingerInfo_bak[prev_finger[j]].prev_status = FINGER_PRESS;
+			}
+			fingerInfo_bak[prev_finger[j]].status = FINGER_RELEASE;	
+		}
+
+		prev_finger[j] = current_finger[j];		// pressed key backup
+	}
+
+
+	if( event_cnt > 0 )
+		input_sync(ts->input_dev);
+
+
+#else
+	/* check touch event */
+	for ( i= 0; i<MAX_USING_FINGER_NUM; i++ )
+	{
+		//////////////////////////////////////////////////IC
+		if(fingerInfo[i].id >=1) // press interrupt
+		{
+			if(fingerInfo[i].status != -2) // force release
+				fingerInfo[i].status = 1;
+			else
+				fingerInfo[i].status = -2;
+		}
+		else if(fingerInfo[i].id ==0) // release interrupt (only first finger)
+		{
+			if(fingerInfo[i].status == 1) // prev status is press
+				fingerInfo[i].status = 0;
+			else if(fingerInfo[i].status == 0 || fingerInfo[i].status == -2) // release already or force release
 			fingerInfo[i].status = -1;
 		}
 
-		if(fingerInfo[i].status == -1) continue;
-		/////////////////////////////////////////////////IC
+		if(fingerInfo[i].status < 0) continue;
+		//////////////////////////////////////////////////IC
 
 		input_report_abs(ts->input_dev, ABS_MT_POSITION_X, fingerInfo[i].x);
 		input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, fingerInfo[i].y);
-		input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, fingerInfo[i].id);
+		input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, fingerInfo[i].status);
 		input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, fingerInfo[i].z);
 		input_mt_sync(ts->input_dev);
 
@@ -295,6 +885,43 @@ static void synaptics_ts_work_func(struct work_struct *work)
 	}
 
 	input_sync(ts->input_dev);
+#endif
+	
+#else
+
+#if USE_THREADED_IRQ
+	struct synaptics_ts_data *ts = dev_id;
+#else
+	struct synaptics_ts_data *ts = container_of(work, struct synaptics_ts_data, work);
+#endif
+
+	memset(buf, 0, sizeof(buf));
+	ret = tsp_i2c_read( i2c_addr, buf, sizeof(buf));
+
+	if (ret <= 0) {
+		printk("[TSP] i2c failed : ret=%d, ln=%d\n",ret, __LINE__);
+		goto work_func_out;
+	}
+
+	finger = buf[0] & 0x0f;	
+	
+	fingerInfo[0].x = (buf[1] << 8) |buf[2];
+	fingerInfo[0].y = (buf[3] << 8) |buf[4];
+	fingerInfo[0].z = buf[5]/2;
+	fingerInfo[0].id = (buf[6] >>4)& 0x0f;
+
+	fingerInfo[1].x = (buf[7] << 8) |buf[8];
+	fingerInfo[1].y = (buf[9] << 8) |buf[10];
+	fingerInfo[1].z = buf[11]/2;
+	fingerInfo[1].id = buf[6] & 0x0f;
+
+	printk("%x, %x, %x, %x, %x, %x, %x, %x, %x\n", buf[0], fingerInfo[0].x, fingerInfo[0].y,
+			fingerInfo[0].z, fingerInfo[0].id, fingerInfo[1].x, fingerInfo[1].y,
+			fingerInfo[1].z, fingerInfo[1].id );
+
+
+#endif
+
 
 work_func_out:
 	if (ts->use_irq)
@@ -351,6 +978,24 @@ int tsp_i2c_read(u8 reg, unsigned char *rbuf, int buf_size)
 }
 
 
+int tsp_i2c_write(u8 reg, unsigned char *rbuf, int buf_size)
+{
+	int ret=-1;
+	struct i2c_msg rmsg;
+	unsigned char data[2];
+
+	rmsg.addr = ts_global->client->addr;
+	rmsg.flags = 0;
+	rmsg.len = 2;
+	rmsg.buf = data;
+	data[0] = reg;
+	data[1] = rbuf[0];
+	ret = i2c_transfer(ts_global->client->adapter, &rmsg, 1);
+
+	return ret;
+}
+
+
 static enum hrtimer_restart synaptics_ts_timer_func(struct hrtimer *timer)
 {
 	#if USE_THREADED_IRQ
@@ -381,7 +1026,6 @@ static irqreturn_t synaptics_ts_irq_handler(int irq, void *dev_id)
 	#endif
 }
 
-#if defined (CONFIG_TOUCHSCREEN_MMS128_TASSCOOPER)
 int synaptics_ts_check(void)
 {
     int ret, i;
@@ -404,10 +1048,14 @@ int synaptics_ts_check(void)
 
     if (ret <= 0) {
         printk("[TSP][Synaptics][%s] %s\n", __func__,"Failed synpatics i2c");
+#if defined (CONFIG_TOUCHSCREEN_MMS128_TASSCOOPER)	
         Synaptics_Connected = 0;
+#endif
     } else {
         printk("[TSP][Synaptics][%s] %s\n", __func__,"Passed synpatics i2c");
+#if defined (CONFIG_TOUCHSCREEN_MMS128_TASSCOOPER)
         Synaptics_Connected = 1;
+#endif
     }
 
     touch_vendor_id = buf_tmp[0];
@@ -419,17 +1067,16 @@ int synaptics_ts_check(void)
     if ( (ret > 0) && (buf_tmp[0] == 0xf0) )
     {
         ret = 1;
-        printk("[TSP][Synaptics][%s] %s\n", __func__,"Passed melfas_ts_check");
+        printk("[TSP][Synaptics][%s] %s\n", __func__,"Passed synaptics_ts_check");
     }
     else
     {
         ret = 0;
-        printk("[TSP][Synaptics][%s] %s\n", __func__,"Failed melfas_ts_check");
+        printk("[TSP][Synaptics][%s] %s\n", __func__,"Failed synaptics_ts_check");
     }
 
     return ret;
 }
-#endif
 
 
 
@@ -440,7 +1087,9 @@ static int synaptics_ts_probe(
 	uint8_t i2c_addr = 0x1B;
   	uint8_t buf[3], buf_tmp[3]={0,0,0};  
 	uint8_t addr[1];
-	int i, ret;
+	int i;
+	int ret = 0, key = 0;
+
 
 #if defined (CONFIG_TOUCHSCREEN_MMS128_TASSCOOPER)
         printk("[TSP][Synaptics][%s] %s\n", __func__,"Called");
@@ -474,6 +1123,8 @@ static int synaptics_ts_probe(
 	INIT_WORK(&ts->work, synaptics_ts_work_func);
 	#endif
 
+	INIT_WORK(&ts->work2, check_ic_work_func);
+
 	ts->client = client;
 	i2c_set_clientdata(client, ts);
 
@@ -481,16 +1132,21 @@ static int synaptics_ts_probe(
 
 	tsp_irq=client->irq;
 
-
 #if defined (CONFIG_TOUCHSCREEN_MMS128_TASSCOOPER)
-    ret = synaptics_ts_check();
-    if (ret <= 0) {
-         i2c_release_client(client);		
-         touch_ctrl_regulator(TOUCH_OFF);
+#if USE_THREADED_IRQ
+	msleep(100);
+#endif
 
-         ret = -ENXIO;
-         goto err_input_dev_alloc_failed;
-     }
+    ret = synaptics_ts_check();
+	if (ret <= 0) 
+	{
+		i2c_release_client(client);		
+		touch_ctrl_regulator(TOUCH_OFF);
+
+		ret = -ENXIO;
+		goto err_input_dev_alloc_failed;
+	}
+	
 #else
 	/* Check point - i2c check - start */	
     //ret = tsp_i2c_read( 0x1B, buf_tmp, sizeof(buf_tmp));
@@ -515,9 +1171,6 @@ static int synaptics_ts_probe(
 	touch_hw_ver = buf_tmp[1];
 	touch_sw_ver = buf_tmp[2];
 	printk("[TSP] %s:%d, ver tsp=%x, HW=%x, SW=%x\n", __func__,__LINE__, touch_vendor_id, touch_hw_ver, touch_sw_ver);
-#endif
-
-	HW_ver = touch_hw_ver;
 
 	if (ret <= 0) {
 		printk("[TSP] %s, ln:%d, Failed to register TSP!!!\n\tcheck the i2c line!!!, ret=%d\n", __func__,__LINE__, ret);
@@ -525,6 +1178,9 @@ static int synaptics_ts_probe(
 	}
 	/* Check point - i2c check - end */
 
+#endif
+
+	HW_ver = touch_hw_ver;
 
 	ts->input_dev = input_allocate_device();
 	if (ts->input_dev == NULL) {
@@ -652,14 +1308,18 @@ static int synaptics_ts_suspend(struct i2c_client *client, pm_message_t mesg)
 	{
 		disable_irq(client->irq);
 	}
-    	printk("[TSP] %s-\n", __func__ );
+
+	//TSP_forced_release_forkey();
+	release_all_fingers();
+
+   	printk("[TSP] %s-\n", __func__ );
         
 	return 0;
 }
 
 static int synaptics_ts_resume(struct i2c_client *client)
 {
-	int ret;
+	int i, ret, key;
 	struct synaptics_ts_data *ts = i2c_get_clientdata(client);
     	uint8_t i2c_addr = 0x1D;
 	uint8_t buf[1];
@@ -672,30 +1332,56 @@ static int synaptics_ts_resume(struct i2c_client *client)
 #endif
 	//synaptics_init_panel(ts);
     
+	gpio_direction_output( TSP_SCL , 1 ); 
+	gpio_direction_output( TSP_SDA , 1 ); 
+	//gpio_direction_output( TSP_INT , 1 ); 
+
+	gpio_direction_input(TSP_INT);
+	bcm_gpio_pull_up_down_enable(TSP_INT, false);
 
 	touch_ctrl_regulator(TOUCH_ON);
+	msleep(100);
+	// for TSK
+	for(key = 0; key < MAX_KEYS; key++)
+		touchkey_status[key] = TK_STATUS_RELEASE;
 
-	while (ts->use_irq)
+#ifdef __TASS_WORKFUNC__
+	fingerInfo[0].status = -1;
+	fingerInfo[1].status = -1;
+	fingerInfo[2].id = 0;
+#endif
+
+	for (i = 0; i < I2C_RETRY_CNT; i++)
 	{
-		msleep(20);
-
 		ret = tsp_i2c_read( i2c_addr, buf, sizeof(buf));
-		if (ret <= 0) {
-			printk("[TSP] %d : i2c_transfer failed\n", __LINE__);
-		}
-		else if	( buf[0] == 0 )
+
+		if (ret >= 0)
 		{
-			continue;
+			if (buf[0] == touch_sw_ver)
+			{
+				printk("[TSP] %s:%d, ver SW=%x\n", __func__,__LINE__, buf[0] );
+				break;
+			}
+			else
+			{
+				printk("[TSP] %d : wrong TSP version\n", __LINE__);
+			}
 		}
 		else
 		{
-			printk("[TSP] %s:%d, ver SW=%x\n", __func__,__LINE__, buf[0] );
-			enable_irq(client->irq);
-			break;
+			printk("[TSP] %d : i2c_transfer failed, cnt=%d\n", __LINE__, i+1);
 		}
-		msleep(20);
+
+		touch_ctrl_regulator(TOUCH_OFF);
+		msleep(100);
+		touch_ctrl_regulator(TOUCH_ON);
+		msleep(100);
 	}
+	enable_irq(client->irq);			
 	printk("[TSP] %s-\n", __func__ );
+#if defined(__TASS_CHECKIC__)
+	prev_wdog_val = -1;
+#endif
 	return 0;
 }
 
@@ -756,12 +1442,13 @@ static int __devinit synaptics_ts_init(void)
 	bcm_gpio_pull_up_down_enable(TSP_INT, true);
 	set_irq_type(GPIO_TO_IRQ(TSP_INT), IRQF_TRIGGER_FALLING);
 
-#if defined (CONFIG_TOUCHSCREEN_MMS128_TASSCOOPER)
+//#if defined (CONFIG_TOUCHSCREEN_MMS128_TASSCOOPER)
     //disable BB internal pulls for touch int, scl, sda pin
     bcm_gpio_pull_up_down_enable(TSP_INT, 0);
     bcm_gpio_pull_up_down_enable(TSP_SCL, 0);
     bcm_gpio_pull_up_down_enable(TSP_SDA, 0);
- #endif
+ //#endif
+
  
 	#if USE_THREADED_IRQ
 
@@ -892,6 +1579,7 @@ static ssize_t firmware_ret_store(
 
 int firm_update( void )
 {
+	//int ret;
 	printk(KERN_INFO "[TSP] %s, %d\n", __func__, __LINE__);
 
 	printk("[TSP] disable_irq : %d\n", __LINE__ );
@@ -901,6 +1589,8 @@ int firm_update( void )
 	// TEST
 	// SKC gpio_configure( TSP_SCL, GPIOF_DRIVE_OUTPUT );
 
+	//ret = cancel_work_sync(&ts_global->work2);
+	//hrtimer_cancel(&ts_global->timer2);
 
 	//firmware_ret_val = cypress_update( HW_ver );
 
@@ -914,7 +1604,7 @@ int firm_update( void )
 		firmware_ret_val = 0; // Fail
 	}
 */
-	msleep(1000);
+	//msleep(1000);
 	if( firmware_ret_val )
 		printk(KERN_INFO "[TSP] %s success, %d\n", __func__, __LINE__);
 	else	
@@ -926,6 +1616,12 @@ int firm_update( void )
 	local_irq_enable();
 
 	enable_irq(tsp_irq);
+
+#if defined(__TASS_CHECKIC__)
+	prev_wdog_val = -1;
+#endif
+
+	//hrtimer_start(&ts_global->timer2, ktime_set(0, 500000000), HRTIMER_MODE_REL);
 
 	return 0;
 } 
