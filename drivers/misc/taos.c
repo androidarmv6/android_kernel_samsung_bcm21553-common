@@ -127,9 +127,9 @@
 #elif defined(CONFIG_MACH_TASSVE)
 	#define PRX_THRSH_HI_PARAM		550
 	#define PRX_THRSH_LO_PARAM		400
-#elif defined(CONFIG_MACH_COOPERVE)
-	#define PRX_THRSH_HI_PARAM		550
-	#define PRX_THRSH_LO_PARAM		400
+#elif defined(CONFIG_BOARD_COOPERVE)
+	#define PRX_THRSH_HI_PARAM		700
+	#define PRX_THRSH_LO_PARAM		580
 #else			
 	#define PRX_THRSH_HI_PARAM		0x226 //550 //0x2BC: 700
 	#define PRX_THRSH_LO_PARAM		0x190 //400 //0x226 : 550
@@ -146,7 +146,14 @@
 #endif
 #define PRX_GAIN_PARAM			0x20
 
+#if defined( CONFIG_BOARD_COOPERVE )
+#define SENSOR_DEFAULT_DELAY            (200)   /* 200 ms */
+#define SENSOR_MAX_DELAY                (2000)  /* 2000 ms */
+#define ABS_STATUS                      (ABS_BRAKE)
+#define ABS_WAKE                        (ABS_MISC)
+#define ABS_CONTROL_REPORT              (ABS_THROTTLE)
 
+#endif
 
 /* global var */
 static struct i2c_client *opt_i2c_client = NULL;
@@ -168,6 +175,8 @@ static short prox_value_cnt = 0;
 extern int bcm_gpio_pull_up(unsigned int gpio, bool up);
 extern int bcm_gpio_pull_up_down_enable(unsigned int gpio, bool enable);
 extern int set_irq_type(unsigned int irq, unsigned int type);
+void taos_on(struct taos_data *taos, int type);
+void taos_off(struct taos_data *taos, int type);
 
 static void prox_ctrl_regulator(int on_off)
 {
@@ -271,23 +280,221 @@ int proximity_get_int_value(void)
 {
         int int_value;
 
-        PROXDBG("[GP2A] proximity_get_int_value GPIO_PS_OUT : %d\n", gpio_get_value(GPIO_PROXI_INT));     
-
+        PROXDBG("[GP2A] proximity_get_int_value GPIO_PS_OUT : %d\n", gpio_get_value(GPIO_PROXI_INT));        
         if(gpio_get_value(GPIO_PROXI_INT))
                 int_value =1;
         else
                 int_value =0;                
 
         return int_value;
-        }
+}
 EXPORT_SYMBOL(proximity_get_int_value);
-        
+
 short taos_get_proximity_value()
 {
 	PROXDBG("[TAOS] taos_get_proximity_value called : %d\n",proximity_value); 
 
 	return ((proximity_value == 1)? 0:1);
 }
+
+#if defined( CONFIG_BOARD_COOPERVE )
+static void proxsensor_get_avgvalue(struct taos_data *taos)
+{
+ 	int min = 0, max = 0, avg = 0;
+ 	int i;
+ 	u16 proximity_value = 0;
+ 
+ 	for (i = 0; i < 40; i++) {
+ 		msleep(40);
+ 		proximity_value = i2c_smbus_read_word_data(opt_i2c_client, CMD_REG | PRX_LO);
+ 		avg += proximity_value;
+ 
+ 		if (!i)
+ 			min = proximity_value;
+ 		else if (proximity_value < min)
+ 			min = proximity_value;
+ 
+ 		if (proximity_value > max)
+ 			max = proximity_value;
+  	}
+	avg /= 40;
+     
+     	taos_global->avg[0] = min;
+     	taos_global->avg[1] = avg;
+     	taos_global->avg[2] = max;
+}
+
+/* Proximity Sysfs interface */
+static ssize_t
+proximity_delay_show(struct device *dev,
+        struct device_attribute *attr,
+        char *buf)
+{
+	return sprintf(buf, "%d\n", taos_global->delay);
+}
+
+static ssize_t
+proximity_delay_store(struct device *dev,
+        struct device_attribute *attr,
+        const char *buf,
+        size_t count)
+{
+	int delay = simple_strtoul(buf, NULL, 10);
+
+	if (delay < 0) {
+		return count;
+	}
+
+	if (SENSOR_MAX_DELAY < delay) {
+		delay = SENSOR_MAX_DELAY;
+	}
+
+	taos_global->delay = delay;
+
+	input_report_abs(taos_global->input_dev, ABS_CONTROL_REPORT, (taos_global->delay<<16) | delay);
+
+	return count;
+}
+
+static ssize_t
+proximity_enable_show(struct device *dev,
+        struct device_attribute *attr,
+        char *buf)
+{
+	return sprintf(buf, "%d\n", taos_global->enabled);
+}
+
+static ssize_t
+proximity_enable_store(struct device *dev,
+        struct device_attribute *attr,
+        const char *buf,
+        size_t count)
+{
+	int value = simple_strtoul(buf, NULL, 10);
+
+	if (value != 0 && value != 1) {
+		return count;
+	}
+
+	if (taos_global->enabled && !value) { 			/* Proximity power off */
+		printk(KERN_INFO "[TAOS] TAOS_PROX_CLOSE called\n");
+		taos_off(taos_global,PROXIMITY);
+		proximity_enable=0;
+		prox_value_cnt = 0;                
+		proximity_value = 0;    
+	}
+	if (!taos_global->enabled && value) {			/* proximity power on */
+		printk(KERN_INFO "[TAOS] TAOS_PROX_OPEN called\n");
+		taos_on(taos_global,PROXIMITY);
+		proximity_enable =1;	
+	}
+	taos_global->enabled = value;
+
+	printk("[HSS] [%s] enable = %d\n", __FUNCTION__, value);
+
+	input_report_abs(taos_global->input_dev, ABS_CONTROL_REPORT, (value<<16) | taos_global->delay);
+
+	return count;
+}
+
+static ssize_t
+proximity_wake_store(struct device *dev,
+        struct device_attribute *attr,
+        const char *buf,
+        size_t count)
+{
+	static int cnt = 1;
+
+	input_report_abs(taos_global->input_dev, ABS_WAKE, cnt++);
+
+	return count;
+}
+
+static ssize_t
+proximity_data_show(struct device *dev,
+        struct device_attribute *attr,
+        char *buf)
+{
+	return sprintf(buf, "%d\n", !proximity_value);
+}
+
+ static ssize_t 
+ proximity_avg_show(struct device *dev,
+     	struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d,%d,%d\n",
+  		taos_global ->avg[0], taos_global ->avg[1], taos_global ->avg[2]);
+}
+
+  
+static ssize_t 
+proximity_avg_store(struct device *dev,
+        struct device_attribute *attr,
+        const char *buf, size_t size)
+{
+	bool new_value;
+     
+	if (sysfs_streq(buf, "1"))
+		new_value = true;
+	else if (sysfs_streq(buf, "0"))
+		new_value = false;
+	else {
+		pr_err("%s: invalid value %d\n", __func__, *buf);
+		return -EINVAL;
+	}
+    
+	if (new_value) {
+
+	hrtimer_start(&taos_global->prox_timer, taos_global->prox_poll_delay,
+    						HRTIMER_MODE_REL);
+	} else if (!new_value) {
+		hrtimer_cancel(&taos_global->prox_timer);
+		cancel_work_sync(&taos_global->work_proxi);
+	}
+
+	return size;
+}
+
+static ssize_t 
+proximity_state_show(struct device *dev,
+ 	struct device_attribute *attr, char *buf)
+ {
+  	u16 proximity_value = 0;
+ 
+ 	msleep(20);
+	
+	proximity_value = i2c_smbus_read_word_data(opt_i2c_client, CMD_REG | PRX_LO); 	
+
+ 	return sprintf(buf, "%d", proximity_value);
+ }	 
+
+static DEVICE_ATTR(proximity_avg, 0644,
+	proximity_avg_show, proximity_avg_store);
+static DEVICE_ATTR(proximity_state, 0644, 
+	proximity_state_show, NULL);
+static DEVICE_ATTR(delay, S_IRUGO|S_IWUSR|S_IWGRP,
+        proximity_delay_show, proximity_delay_store);
+static DEVICE_ATTR(enable, S_IRUGO|S_IWUSR|S_IWGRP,
+        proximity_enable_show, proximity_enable_store);
+static DEVICE_ATTR(wake, S_IWUSR|S_IWGRP,
+        NULL, proximity_wake_store);
+static DEVICE_ATTR(data, S_IRUGO, proximity_data_show, NULL);
+
+
+static struct attribute *proximity_attributes[] = {
+    &dev_attr_proximity_avg.attr,
+    &dev_attr_proximity_state.attr,		
+    &dev_attr_delay.attr,
+    &dev_attr_enable.attr,
+    &dev_attr_wake.attr,
+    &dev_attr_data.attr,
+    NULL
+};
+
+static struct attribute_group proximity_attribute_group = {
+    .attrs = proximity_attributes
+};
+#endif
 
 EXPORT_SYMBOL(taos_get_proximity_value);
 
@@ -321,7 +528,9 @@ static DEVICE_ATTR(proxsensor_file_state,0666, proxsensor_file_state_show, NULL)
 static void taos_work_func_prox(struct work_struct *work) 
 {
 	//struct taos_data *taos = container_of(work, struct taos_data, work_prox);
+#if defined(CONFIG_BOARD_TOTORO)
 	unsigned char vout=0;
+#endif
 	u16 adc_data;
 	u16 threshold_high;
 	u16 threshold_low;
@@ -394,7 +603,11 @@ static void taos_work_func_prox(struct work_struct *work)
 
 	if(USE_INPUT_DEVICE)
 	{
+#if defined(CONFIG_BOARD_TOTORO)
 		input_report_abs(taos_global->input_dev,ABS_DISTANCE,(int)vout);
+#elif defined(CONFIG_BOARD_COOPERVE)
+		input_report_abs(taos_global->input_dev, ABS_X, !proximity_value);
+#endif
 		input_sync(taos_global->input_dev);
 		mdelay(1);
 	}
@@ -411,6 +624,19 @@ static void taos_work_func_prox(struct work_struct *work)
 
 }
 
+#if defined( CONFIG_BOARD_COOPERVE )
+static void taos_work_func_proxi(struct work_struct *work)
+{
+	proxsensor_get_avgvalue(taos_global);
+}
+
+static enum hrtimer_restart taos_prox_timer_func(struct hrtimer *timer)
+{
+	queue_work(taos_global->prox_wq, &taos_global->work_proxi);
+	hrtimer_forward_now(&taos_global->prox_timer, taos_global->prox_poll_delay);
+	return HRTIMER_RESTART;
+}
+#endif
 
 static irqreturn_t taos_irq_handler(int irq, void *dev_id)
 {
@@ -724,6 +950,10 @@ static int taos_opt_probe(struct i2c_client *client,
         set_bit(EV_SYN,taos_global->input_dev->evbit);
         set_bit(EV_ABS,taos_global->input_dev->evbit);
         input_set_abs_params(taos_global->input_dev, ABS_DISTANCE, 0, 1, 0, 0);
+#if defined( CONFIG_BOARD_COOPERVE )
+        input_set_abs_params(taos_global->input_dev, ABS_X, 0, 1, 0, 0);
+        input_set_abs_params(taos_global->input_dev, ABS_WAKE, 0, 0x7fffffff, 0, 0);
+#endif     
         err = input_register_device(taos_global->input_dev);
         if (err) 
         {
@@ -734,6 +964,22 @@ static int taos_opt_probe(struct i2c_client *client,
         }
 	printk(KERN_INFO "[TAOS] Input device settings complete");
 
+#if defined( CONFIG_BOARD_COOPERVE )
+	err = sysfs_create_group(&taos_global->input_dev->dev.kobj,
+				&proximity_attribute_group);
+	if(err < 0)
+	{
+		printk(("sensor_probe: sysfs_create_group failed[%s]\n",
+               taos_global->input_dev->name));	
+		goto INPUT_DEV_DREG;
+	}
+
+	/* prox_timer settings */
+ 	hrtimer_init(&taos_global->prox_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+ 	taos_global->prox_poll_delay = ns_to_ktime(2000 * NSEC_PER_MSEC);
+ 	taos_global->prox_timer.function = taos_prox_timer_func;	
+	
+#endif
 
 #if USE_INTERRUPT
 	/* WORK QUEUE Settings */
@@ -744,6 +990,17 @@ static int taos_opt_probe(struct i2c_client *client,
 		err = -ENOMEM;
 		goto INPUT_DEV_DREG;
 	} 
+#if defined( CONFIG_BOARD_COOPERVE )
+	/* WORK QUEUE Settings */
+	taos_global->prox_wq = create_singlethread_workqueue("prox_wq");
+	if (!taos_global->prox_wq)
+	{
+		printk(KERN_ERR "[TAOS] Not enough memory for prox_wq\n");        
+		err = -ENOMEM;
+		goto INPUT_DEV_DREG;
+	} 
+	INIT_WORK(&taos_global->work_proxi, taos_work_func_proxi);	
+#endif	
 	INIT_WORK(&taos_global->work_prox, taos_work_func_prox);
 	printk(KERN_INFO "[TAOS] Workqueue Settings complete\n");
 
@@ -777,7 +1034,10 @@ static int taos_opt_probe(struct i2c_client *client,
 	return 0;
 
 DESTROY_WORK_QUEUE:
-	destroy_workqueue(taos_wq);	
+	destroy_workqueue(taos_wq);
+#if defined( CONFIG_BOARD_COOPERVE )	
+	destroy_workqueue(taos_global->prox_wq);
+#endif
 INPUT_DEV_DREG:
 	input_unregister_device(taos_global->input_dev);	
 MISC_DREG:
@@ -798,6 +1058,9 @@ static int taos_opt_remove(struct i2c_client *client)
 #endif
 
         destroy_workqueue(taos_wq);
+#if defined( CONFIG_BOARD_COOPERVE )
+        destroy_workqueue(taos_global->prox_wq);
+#endif
         input_unregister_device(taos_global->input_dev);
         misc_deregister(&proximity_device);    
         kfree(taos_global);

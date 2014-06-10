@@ -38,6 +38,9 @@
 #define LCD_BITS_PER_PIXEL      32
 #define TEAR_LINE 500
 
+// Used color depth of this LDI, refer COLMOD value of 3Ah register
+#define LCD_LDI_USED_COLOR_DEPTH  24    // RGB888 is used
+
 #define LCD_CMD(x) (x)
 #define LCD_DATA(x) (x)
 
@@ -58,7 +61,7 @@
 	{WR_CMND, 0x2C,0}
 
 #define PANEL_DTC	0x6bc010
-#define PANEL_AUO	0x6b4c10
+#define PANEL_AUO	0x6b4d10
 #define PANEL_SHARP	0x6b1c10 
 
 //const char *LCD_panel_name = "S6D04H0X20 LCD";
@@ -68,8 +71,15 @@ int LCD_num_panels = 1;
 LCD_Intf_t LCD_Intf = LCD_Z80;
 //LCD_Bus_t LCD_Bus = LCD_18BIT;
 LCD_Bus_t LCD_Bus = LCD_16BIT;
-CSL_LCDC_PAR_SPEED_t timingReg = {24, 25, 0, 1, 2, 0};
-CSL_LCDC_PAR_SPEED_t timingMem = {24, 25, 0, 1, 2, 0};
+CSL_LCDC_PAR_SPEED_t timingReg = {24, 25, 0, 3, 3, 0};
+CSL_LCDC_PAR_SPEED_t timingMem = {24, 25, 0, 3, 3, 0};
+
+#if 1 // to reduce fmr noise
+CSL_LCDC_PAR_SPEED_t timingRegOrg = {24, 25, 0, 3, 3, 0};
+CSL_LCDC_PAR_SPEED_t timingMemOrg = {24, 25, 0, 3, 3, 0};
+CSL_LCDC_PAR_SPEED_t timingRegForFMR = {24, 25, 0, 3, 11, 2};
+CSL_LCDC_PAR_SPEED_t timingMemForFMR = {24, 25, 0, 3, 11, 2};
+#endif
 
 LCD_dev_info_t LCD_device[1] = {
 	{
@@ -84,183 +94,226 @@ LCD_dev_info_t LCD_device[1] = {
 
 Lcd_init_t power_on_seq_s5d05a1x31_cooperve_AUO[] =
 {
-	// Initial Sequence
-	{WR_CMND, 0xF0,0}, // (PASSWARD1)
+	{WR_CMND, 0xF0, 0}, //	Release the protection of L2 CMD
 	{WR_DATA, 0, 0x5A},
-	{WR_DATA, 0, 0x5A},	
-
-	{WR_CMND, 0xF1,0}, // (PASSWARD2)
 	{WR_DATA, 0, 0x5A},
+	
+	{WR_CMND, 0xF1, 0}, //	Release the protection of L2 CMD
 	{WR_DATA, 0, 0x5A},	
-
-	{WR_CMND, 0xF2,0}, // (DISCTL)
+	{WR_DATA, 0, 0x5A},
+		
+	{WR_CMND, 0xF2, 0},
 	{WR_DATA, 0, 0x3B},
-	{WR_DATA, 0, 0x38}, 
+	{WR_DATA, 0, 0x34}, //	Frame rate =98Hz
 	{WR_DATA, 0, 0x03},
-	{WR_DATA, 0, 0x08},
-	{WR_DATA, 0, 0x08},
-	
+	{WR_DATA, 0, 0x04}, //	NVBP=4
+	{WR_DATA, 0, 0x04}, //	NVFP=4
 	{WR_DATA, 0, 0x08},
 	{WR_DATA, 0, 0x08},
 	{WR_DATA, 0, 0x00},
 	{WR_DATA, 0, 0x08},
-	{WR_DATA, 0, 0x08}, 
-	
+	{WR_DATA, 0, 0x08},
 	{WR_DATA, 0, 0x00},
 	{WR_DATA, 0, 0x00},
 	{WR_DATA, 0, 0x00},
 	{WR_DATA, 0, 0x08},
-	{WR_DATA, 0, 0x54}, 
-
-	{WR_DATA, 0, 0x08},
-	{WR_DATA, 0, 0x08},
+	{WR_DATA, 0, 0x54},
+	{WR_DATA, 0, 0x08}, //	PIVBP=08
+	{WR_DATA, 0, 0x08}, //	PIVFP=08
 	{WR_DATA, 0, 0x04},
-	{WR_DATA, 0, 0x04}, 
-
-	//Power Setting Sequence
-	{WR_CMND, 0xF4,0}, // (PWRCTL)
-	{WR_DATA, 0, 0x0A},
-	{WR_DATA, 0, 0x00},	
+	{WR_DATA, 0, 0x04},
+		
+	{WR_CMND, 0xF4, 0},
+	{WR_DATA, 0, 0x0A}, //	VC=8 (VCI1=2.58V)
 	{WR_DATA, 0, 0x00},
-	{WR_DATA, 0, 0x00},	
 	{WR_DATA, 0, 0x00},
-	
-	{WR_DATA, 0, 0x00},	
 	{WR_DATA, 0, 0x00},
-	{WR_DATA, 0, 0x00},	
+	{WR_DATA, 0, 0x00},
+	{WR_DATA, 0, 0x00},
+	{WR_DATA, 0, 0x00},
+	{WR_DATA, 0, 0x00},
 	{WR_DATA, 0, 0x15},
-	{WR_DATA, 0, 0x6B},
+	{WR_DATA, 0, 0x70}, //	GVDD
+	{WR_DATA, 0, 0x03}, //	NBT=3,VGH=14.63  VGL=-9.58
 	
-	{WR_DATA, 0, 0x03}, 
-
-	{WR_CMND, 0xF5,0}, // (VCMCTL)
-	{WR_DATA, 0, 0x00},
-	{WR_DATA, 0, 0x47},	
-	{WR_DATA, 0, 0x75},
+	{WR_CMND, 0xF5, 0},	
 	{WR_DATA, 0, 0x00},	
-	{WR_DATA, 0, 0x00},
-	
+	{WR_DATA, 0, 0x52},	
+	{WR_DATA, 0, 0x60},	
+	{WR_DATA, 0, 0x00},	
+	{WR_DATA, 0, 0x00},	
 	{WR_DATA, 0, 0x04},	
-	{WR_DATA, 0, 0x00},
-	{WR_DATA, 0, 0x00},	 
-	{WR_DATA, 0, 0x04},	 
-
-	{WR_CMND, 0xF6,0}, // (SRCCTL)
-	{WR_DATA, 0, 0x04},
 	{WR_DATA, 0, 0x00},	
-	{WR_DATA, 0, 0x08},
+	{WR_DATA, 0, 0x00},
+	{WR_DATA, 0, 0x04},
+	
+	{WR_CMND, 0xF6, 0},	
+	{WR_DATA, 0, 0x04},	
+	{WR_DATA, 0, 0x00},	
+	{WR_DATA, 0, 0x08},	
 	{WR_DATA, 0, 0x03},	
-	{WR_DATA, 0, 0x01},
-	
-	{WR_DATA, 0, 0x00},	 
-
-	//Initializing Sequence
-	{WR_CMND, 0xF7,0}, // (IFCTL)
+	{WR_DATA, 0, 0x01},	
+	{WR_DATA, 0, 0x00},
+		
+	{WR_CMND, 0xF7, 0}, //	Interface control                                          reference to Color_Mode_Selection
 	{WR_DATA, 0, 0x48},
-	{WR_DATA, 0, 0x80}, 
+	{WR_DATA, 0, 0x80}, //	24 bit 888
 	{WR_DATA, 0, 0x10},
-	{WR_DATA, 0, 0x02}, 
+	{WR_DATA, 0, 0x02},
 	{WR_DATA, 0, 0x00},
-
-	{WR_CMND, 0xF8,0}, // (PANELCTL)
+		
+	{WR_CMND, 0xF8, 0},
 	{WR_DATA, 0, 0x11},
-	{WR_DATA, 0, 0x00}, 
-
-
-	//Gamma Setting
-	{WR_CMND, 0xF9,0}, // (GAMMASEL)
-	{WR_DATA, 0, 0x24},
-	
-	{WR_CMND, 0xFA,0}, // (PGAMMACTL)
-	{WR_DATA, 0, 0x23},
 	{WR_DATA, 0, 0x00},
-	{WR_DATA, 0, 0x0A},
-	{WR_DATA, 0, 0x18},
-	{WR_DATA, 0, 0x1E},
-	
-	{WR_DATA, 0, 0x22},
-	{WR_DATA, 0, 0x29},
-	{WR_DATA, 0, 0x1D},
-	{WR_DATA, 0, 0x2A},
-	{WR_DATA, 0, 0x2F},
-	
-	{WR_DATA, 0, 0x3A},
-	{WR_DATA, 0, 0x3C},
-	{WR_DATA, 0, 0x30},
+		
+	{WR_CMND, 0xF9, 0},
+	{WR_DATA, 0, 0x14},
+		
+	{WR_CMND, 0xFA, 0},
+	{WR_DATA, 0, 0x19},
 	{WR_DATA, 0, 0x00},
-	{WR_DATA, 0, 0x2A},
-
 	{WR_DATA, 0, 0x00},
- 
-	{WR_CMND, 0xF9,0}, // (GAMMASEL)
-	{WR_DATA, 0, 0x22},
-	
-	{WR_CMND, 0xFA,0}, // (PGAMMACTL)
-	{WR_DATA, 0, 0x30},
-	{WR_DATA, 0, 0x10},
-	{WR_DATA, 0, 0x08},
-	{WR_DATA, 0, 0x1B},
-	{WR_DATA, 0, 0x1B},
-	
-	{WR_DATA, 0, 0x1F},
-	{WR_DATA, 0, 0x25},
+	{WR_DATA, 0, 0x1C},
+	{WR_DATA, 0, 0x19},
+	{WR_DATA, 0, 0x17},
 	{WR_DATA, 0, 0x1A},
-	{WR_DATA, 0, 0x26},
-	{WR_DATA, 0, 0x24},
-	
-	{WR_DATA, 0, 0x25},
-	{WR_DATA, 0, 0x22},
 	{WR_DATA, 0, 0x2C},
+	{WR_DATA, 0, 0x37},
+	{WR_DATA, 0, 0x3F},
+	{WR_DATA, 0, 0x2F},
+	{WR_DATA, 0, 0x14},
+	{WR_DATA, 0, 0x15},
 	{WR_DATA, 0, 0x00},
+	{WR_DATA, 0, 0x00},
+	{WR_DATA, 0, 0x00},
+		
+	{WR_CMND, 0xFB, 0},
+	{WR_DATA, 0, 0x00},
+	{WR_DATA, 0, 0x07},
+	{WR_DATA, 0, 0x15},
+	{WR_DATA, 0, 0x14},
+	{WR_DATA, 0, 0x2F},
+	{WR_DATA, 0, 0x3F},
+	{WR_DATA, 0, 0x37},
+	{WR_DATA, 0, 0x2C},
+	{WR_DATA, 0, 0x1A},
+	{WR_DATA, 0, 0x17},
+	{WR_DATA, 0, 0x19},
+	{WR_DATA, 0, 0x1C},
+	{WR_DATA, 0, 0x00},
+	{WR_DATA, 0, 0x00},
+	{WR_DATA, 0, 0x00},
+	{WR_DATA, 0, 0x00},
+		
+	{WR_CMND, 0xF9, 0},
+	{WR_DATA, 0, 0x12},
+		
+	{WR_CMND, 0xFA, 0},
+	{WR_DATA, 0, 0x1A},
+	{WR_DATA, 0, 0x06},
+	{WR_DATA, 0, 0x04},
+	{WR_DATA, 0, 0x1C},
+	{WR_DATA, 0, 0x1C},
+	{WR_DATA, 0, 0x1C},
+	{WR_DATA, 0, 0x1C},
 	{WR_DATA, 0, 0x2A},
-
-	{WR_DATA, 0, 0x00}, 
-
-	{WR_CMND, 0xF9,0}, // (GAMMASEL)
-	{WR_DATA, 0, 0x21},
-	
-	{WR_CMND, 0xFA,0}, // (PGAMMACTL)
-	{WR_DATA, 0, 0x30},
-	{WR_DATA, 0, 0x10},
-	{WR_DATA, 0, 0x0A},
-	{WR_DATA, 0, 0x21},
-	{WR_DATA, 0, 0x31},
-	
-	{WR_DATA, 0, 0x33},
-	{WR_DATA, 0, 0x32},
-	{WR_DATA, 0, 0x10},
-	{WR_DATA, 0, 0x1D},
-	{WR_DATA, 0, 0x20},
-	
-	{WR_DATA, 0, 0x21},
-	{WR_DATA, 0, 0x21},
-	{WR_DATA, 0, 0x20},
+	{WR_DATA, 0, 0x38},
+	{WR_DATA, 0, 0x3D},
+	{WR_DATA, 0, 0x3E},
+	{WR_DATA, 0, 0x36},
+	{WR_DATA, 0, 0x2D},
 	{WR_DATA, 0, 0x00},
+	{WR_DATA, 0, 0x00},
+	{WR_DATA, 0, 0x00},
+		
+	{WR_CMND, 0xFB, 0},
+	{WR_DATA, 0, 0x06},
+	{WR_DATA, 0, 0x10},
+	{WR_DATA, 0, 0x2D},
+	{WR_DATA, 0, 0x36},
+	{WR_DATA, 0, 0x3E},
+	{WR_DATA, 0, 0x3D},
+	{WR_DATA, 0, 0x38},
 	{WR_DATA, 0, 0x2A},
-
+	{WR_DATA, 0, 0x1C},
+	{WR_DATA, 0, 0x1C},
+	{WR_DATA, 0, 0x1C},
+	{WR_DATA, 0, 0x1C},
+	{WR_DATA, 0, 0x04},
 	{WR_DATA, 0, 0x00},
-         
-
-	//Initializing Sequence
-	{WR_CMND, 0x3A,0}, // (COLMOD)
-	{WR_DATA, 0, 0x77}, //66
-
-	{WR_CMND, 0x35,0}, // (TEON)
 	{WR_DATA, 0, 0x00},
-
-	{WR_CMND, 0x36,0}, // (MADCTL)
+	{WR_DATA, 0, 0x00},
+		
+	{WR_CMND, 0xF9, 0},
+	{WR_DATA, 0, 0x11},
+		
+	{WR_CMND, 0xFA, 0},
+	{WR_DATA, 0, 0x18},
+	{WR_DATA, 0, 0x06},
+	{WR_DATA, 0, 0x1F},
+	{WR_DATA, 0, 0x2E},
+	{WR_DATA, 0, 0x2B},
+	{WR_DATA, 0, 0x25},
+	{WR_DATA, 0, 0x23},
+	{WR_DATA, 0, 0x25},
+	{WR_DATA, 0, 0x34},
+	{WR_DATA, 0, 0x3B},
+	{WR_DATA, 0, 0x2E},
+	{WR_DATA, 0, 0x20},
+	{WR_DATA, 0, 0x0C},
+	{WR_DATA, 0, 0x00},
+	{WR_DATA, 0, 0x00},
+	{WR_DATA, 0, 0x00},
+		
+	{WR_CMND, 0xFB, 0},
+	{WR_DATA, 0, 0x06},
+	{WR_DATA, 0, 0x12},
+	{WR_DATA, 0, 0x0C},
+	{WR_DATA, 0, 0x20},
+	{WR_DATA, 0, 0x2E},
+	{WR_DATA, 0, 0x3B},
+	{WR_DATA, 0, 0x34},
+	{WR_DATA, 0, 0x25},
+	{WR_DATA, 0, 0x23},
+	{WR_DATA, 0, 0x25},
+	{WR_DATA, 0, 0x2B},
+	{WR_DATA, 0, 0x2E},
+	{WR_DATA, 0, 0x1F},
+	{WR_DATA, 0, 0x00},
+	{WR_DATA, 0, 0x00},
+	{WR_DATA, 0, 0x00},
+		
+	{WR_CMND, 0x3A, 0},
+	{WR_DATA, 0, 0x77}, //	Base on customer select                     55H=16bit, 66H=18bit, 77H=24 bit    
+	
+	{WR_CMND, 0x35, 0},
+	{WR_DATA, 0, 0x00},
+	
+	{WR_CMND, 0x36, 0},
 	{WR_DATA, 0, 0xD0},
-
-	{WR_CMND, 0x11,0}, // (SLPOUT)
+		
+	{WR_CMND, 0x2B, 0},
+	{WR_DATA, 0, 0x00},
+	{WR_DATA, 0, 0x00},
+	{WR_DATA, 0, 0x01},
+	{WR_DATA, 0, 0xDF},
+		
+	{WR_CMND, 0x2A, 0},
+	{WR_DATA, 0, 0x00},
+	{WR_DATA, 0, 0x00},
+	{WR_DATA, 0, 0x01},
+	{WR_DATA, 0, 0x3F},
+		
+	{WR_CMND, 0x2C, 0},
+	
+	{WR_CMND, 0x11, 0}, //	Sleep Out
 
 	{SLEEP_MS, 0, 120}, // 120ms
-
-	{WR_CMND, 0x29,0}, // (DISPON) 
+		
+	{WR_CMND, 0x29, 0}, //	Display On
 	
 	{CTRL_END, 0, 0}
 };
-
-
 
 Lcd_init_t power_on_seq_s5d05a1x31_cooperve_DTC[] =
 {
@@ -370,20 +423,20 @@ Lcd_init_t power_on_seq_s5d05a1x31_cooperve_DTC[] =
 
     {WR_CMND, 0xFA,0}, // (PGAMMACTL)
     {WR_DATA, 0, 0x01},
-    {WR_DATA, 0, 0x02},
-    {WR_DATA, 0, 0x03},
-    {WR_DATA, 0, 0x22},
+    {WR_DATA, 0, 0x00},
+    {WR_DATA, 0, 0x01},
+    {WR_DATA, 0, 0x1C},
+    {WR_DATA, 0, 0x1C},
+
     {WR_DATA, 0, 0x20},
+    {WR_DATA, 0, 0x26},
+    {WR_DATA, 0, 0x23},
+    {WR_DATA, 0, 0x32},
+    {WR_DATA, 0, 0x38},
 
-    {WR_DATA, 0, 0x21},
-    {WR_DATA, 0, 0x21},
-    {WR_DATA, 0, 0x27},
-    {WR_DATA, 0, 0x37},
-    {WR_DATA, 0, 0x3D},
-
-    {WR_DATA, 0, 0x3E},
-    {WR_DATA, 0, 0x3A},
-    {WR_DATA, 0, 0x37},
+    {WR_DATA, 0, 0x36},
+    {WR_DATA, 0, 0x36},
+    {WR_DATA, 0, 0x34},
     {WR_DATA, 0, 0x00},
     {WR_DATA, 0, 0x00},
 
@@ -393,20 +446,20 @@ Lcd_init_t power_on_seq_s5d05a1x31_cooperve_DTC[] =
     {WR_DATA, 0, 0x22},
 
     {WR_CMND, 0xFA,0}, // (PGAMMACTL)
-    {WR_DATA, 0, 0x2F},
-    {WR_DATA, 0, 0x01},
-    {WR_DATA, 0, 0x01},
-    {WR_DATA, 0, 0x20},
-    {WR_DATA, 0, 0x1E},
+    {WR_DATA, 0, 0x28},
+    {WR_DATA, 0, 0x00},
+    {WR_DATA, 0, 0x07},
+    {WR_DATA, 0, 0x29},
+    {WR_DATA, 0, 0x2B},
+    {WR_DATA, 0, 0x29},
+    {WR_DATA, 0, 0x28},
     {WR_DATA, 0, 0x1F},
-    {WR_DATA, 0, 0x20},
-    {WR_DATA, 0, 0x24},
-    {WR_DATA, 0, 0x33},
-    {WR_DATA, 0, 0x34},
+    {WR_DATA, 0, 0x2C},
+    {WR_DATA, 0, 0x30},
 
-    {WR_DATA, 0, 0x2E},
-    {WR_DATA, 0, 0x34},
-    {WR_DATA, 0, 0x2A},
+    {WR_DATA, 0, 0x2D},
+    {WR_DATA, 0, 0x2F},
+    {WR_DATA, 0, 0x1E},
     {WR_DATA, 0, 0x00},
     {WR_DATA, 0, 0x00},
 
@@ -417,20 +470,20 @@ Lcd_init_t power_on_seq_s5d05a1x31_cooperve_DTC[] =
 
     {WR_CMND, 0xFA,0}, // (PGAMMACTL)
     {WR_DATA, 0, 0x10},
-    {WR_DATA, 0, 0x0F},
     {WR_DATA, 0, 0x01},
-    {WR_DATA, 0, 0x20},
-    {WR_DATA, 0, 0x2B},
-
+    {WR_DATA, 0, 0x0A},
+    {WR_DATA, 0, 0x2D},
     {WR_DATA, 0, 0x2A},
-    {WR_DATA, 0, 0x24},
-    {WR_DATA, 0, 0x22},
-    {WR_DATA, 0, 0x31},
-    {WR_DATA, 0, 0x38},
 
-    {WR_DATA, 0, 0x34},
-    {WR_DATA, 0, 0x3D},
+    {WR_DATA, 0, 0x2E},
+    {WR_DATA, 0, 0x2B},
+    {WR_DATA, 0, 0x1C},
+    {WR_DATA, 0, 0x2D},
     {WR_DATA, 0, 0x35},
+
+    {WR_DATA, 0, 0x3C},
+    {WR_DATA, 0, 0x36},
+    {WR_DATA, 0, 0x32},	//10.19.2011
     {WR_DATA, 0, 0x00},
     {WR_DATA, 0, 0x00},
 
@@ -471,7 +524,7 @@ Lcd_init_t power_on_seq_s5d05a1x31_cooperve_DTC[] =
 };
 
 
-// VER A8
+// VER A16
 Lcd_init_t power_on_seq_s5d05a1x31_cooperve_SHARP[] =
 {
 	{WR_CMND, 0xF0, 0},
@@ -507,7 +560,7 @@ Lcd_init_t power_on_seq_s5d05a1x31_cooperve_SHARP[] =
 	{WR_DATA, 0, 0x00},
 	
 	{WR_CMND, 0xF4, 0},
-	{WR_DATA, 0, 0x08},
+	{WR_DATA, 0, 0x07},
 	{WR_DATA, 0, 0x00},
 	{WR_DATA, 0, 0x00},
 	{WR_DATA, 0, 0x00},
@@ -562,35 +615,35 @@ Lcd_init_t power_on_seq_s5d05a1x31_cooperve_SHARP[] =
 	
 	{WR_CMND, 0xFA, 0},
 	{WR_DATA, 0, 0x00},
-	{WR_DATA, 0, 0x10},
+	{WR_DATA, 0, 0x16},
 	{WR_DATA, 0, 0x0A},
-	{WR_DATA, 0, 0x25},
-	{WR_DATA, 0, 0x29},
-	{WR_DATA, 0, 0x33},
-	{WR_DATA, 0, 0x37},
-	{WR_DATA, 0, 0x0E},
-	{WR_DATA, 0, 0x1C},
-	{WR_DATA, 0, 0x22},
-	{WR_DATA, 0, 0x28},
+	{WR_DATA, 0, 0x26},
+	{WR_DATA, 0, 0x2D},
+	{WR_DATA, 0, 0x38},
+	{WR_DATA, 0, 0x3E},
+	{WR_DATA, 0, 0x06},
+	{WR_DATA, 0, 0x11},
+	{WR_DATA, 0, 0x17},
+	{WR_DATA, 0, 0x21},
 	{WR_DATA, 0, 0x1A},
-	{WR_DATA, 0, 0x02},
+	{WR_DATA, 0, 0x05},
 	{WR_DATA, 0, 0x00},
 	{WR_DATA, 0, 0x00},
 	{WR_DATA, 0, 0x00},
 	
 	{WR_CMND, 0xFB, 0},
-	{WR_DATA, 0, 0x0E},
+	{WR_DATA, 0, 0x14},
 	{WR_DATA, 0, 0x00},
-	{WR_DATA, 0, 0x02},
+	{WR_DATA, 0, 0x05},
 	{WR_DATA, 0, 0x1A},
-	{WR_DATA, 0, 0x28},
-	{WR_DATA, 0, 0x22},
-	{WR_DATA, 0, 0x1C},
-	{WR_DATA, 0, 0x0E},
-	{WR_DATA, 0, 0x37},
-	{WR_DATA, 0, 0x33},
-	{WR_DATA, 0, 0x29},
-	{WR_DATA, 0, 0x25},
+	{WR_DATA, 0, 0x21},
+	{WR_DATA, 0, 0x17},
+	{WR_DATA, 0, 0x11},
+	{WR_DATA, 0, 0x06},
+	{WR_DATA, 0, 0x3E},
+	{WR_DATA, 0, 0x38},
+	{WR_DATA, 0, 0x2D},
+	{WR_DATA, 0, 0x26},
 	{WR_DATA, 0, 0x0A},
 	{WR_DATA, 0, 0x00},
 	{WR_DATA, 0, 0x00},
@@ -601,35 +654,35 @@ Lcd_init_t power_on_seq_s5d05a1x31_cooperve_SHARP[] =
 	
 	{WR_CMND, 0xFA, 0},
 	{WR_DATA, 0, 0x11},
-	{WR_DATA, 0, 0x19},
+	{WR_DATA, 0, 0x1F},
 	{WR_DATA, 0, 0x09},
-	{WR_DATA, 0, 0x2A},
-	{WR_DATA, 0, 0x2F},
-	{WR_DATA, 0, 0x36},
-	{WR_DATA, 0, 0x39},
-	{WR_DATA, 0, 0x0C},
+	{WR_DATA, 0, 0x2C},
+	{WR_DATA, 0, 0x33},
+	{WR_DATA, 0, 0x3B},
+	{WR_DATA, 0, 0x3F},
+	{WR_DATA, 0, 0x04},
+	{WR_DATA, 0, 0x10},
+	{WR_DATA, 0, 0x10},
 	{WR_DATA, 0, 0x1A},
-	{WR_DATA, 0, 0x1E},
-	{WR_DATA, 0, 0x25},
-	{WR_DATA, 0, 0x1E},
-	{WR_DATA, 0, 0x02},
+	{WR_DATA, 0, 0x19},
+	{WR_DATA, 0, 0x04},
 	{WR_DATA, 0, 0x00},
 	{WR_DATA, 0, 0x00},
 	{WR_DATA, 0, 0x00},
 	
 	{WR_CMND, 0xFB, 0},
-	{WR_DATA, 0, 0x17},
+	{WR_DATA, 0, 0x1D},
 	{WR_DATA, 0, 0x11},
-	{WR_DATA, 0, 0x02},
-	{WR_DATA, 0, 0x1E},
-	{WR_DATA, 0, 0x25},
-	{WR_DATA, 0, 0x1E},
+	{WR_DATA, 0, 0x04},
+	{WR_DATA, 0, 0x19},
 	{WR_DATA, 0, 0x1A},
-	{WR_DATA, 0, 0x0C},
-	{WR_DATA, 0, 0x39},
-	{WR_DATA, 0, 0x36},
-	{WR_DATA, 0, 0x2F},
-	{WR_DATA, 0, 0x2A},
+	{WR_DATA, 0, 0x10},
+	{WR_DATA, 0, 0x10},
+	{WR_DATA, 0, 0x04},
+	{WR_DATA, 0, 0x3F},
+	{WR_DATA, 0, 0x3B},
+	{WR_DATA, 0, 0x33},
+	{WR_DATA, 0, 0x2C},
 	{WR_DATA, 0, 0x09},
 	{WR_DATA, 0, 0x00},
 	{WR_DATA, 0, 0x00},
@@ -639,37 +692,37 @@ Lcd_init_t power_on_seq_s5d05a1x31_cooperve_SHARP[] =
 	{WR_DATA, 0, 0x11},
 	
 	{WR_CMND, 0xFA, 0},
-	{WR_DATA, 0, 0x36},
-	{WR_DATA, 0, 0x16},
+	{WR_DATA, 0, 0x33},
+	{WR_DATA, 0, 0x1C},
+	{WR_DATA, 0, 0x03},
+	{WR_DATA, 0, 0x18},
+	{WR_DATA, 0, 0x19},
+	{WR_DATA, 0, 0x1B},
+	{WR_DATA, 0, 0x1F},
+	{WR_DATA, 0, 0x22},
+	{WR_DATA, 0, 0x2C},
+	{WR_DATA, 0, 0x26},
+	{WR_DATA, 0, 0x29},
+	{WR_DATA, 0, 0x1A},
 	{WR_DATA, 0, 0x05},
-	{WR_DATA, 0, 0x0E},
-	{WR_DATA, 0, 0x10},
-	{WR_DATA, 0, 0x10},
-	{WR_DATA, 0, 0x13},
-	{WR_DATA, 0, 0x32},
-	{WR_DATA, 0, 0x3C},
-	{WR_DATA, 0, 0x3B},
-	{WR_DATA, 0, 0x35},
-	{WR_DATA, 0, 0x10},
-	{WR_DATA, 0, 0x02},
 	{WR_DATA, 0, 0x00},
 	{WR_DATA, 0, 0x00},
 	{WR_DATA, 0, 0x00},
 	
 	{WR_CMND, 0xFB, 0},
-	{WR_DATA, 0, 0x14},
-	{WR_DATA, 0, 0x36},
-	{WR_DATA, 0, 0x02},
-	{WR_DATA, 0, 0x10},
-	{WR_DATA, 0, 0x35},
-	{WR_DATA, 0, 0x3B},
-	{WR_DATA, 0, 0x3C},
-	{WR_DATA, 0, 0x32},
-	{WR_DATA, 0, 0x13},
-	{WR_DATA, 0, 0x10},
-	{WR_DATA, 0, 0x10},
-	{WR_DATA, 0, 0x0E},
+	{WR_DATA, 0, 0x1A},
+	{WR_DATA, 0, 0x33},
 	{WR_DATA, 0, 0x05},
+	{WR_DATA, 0, 0x1A},
+	{WR_DATA, 0, 0x29},
+	{WR_DATA, 0, 0x26},
+	{WR_DATA, 0, 0x2C},
+	{WR_DATA, 0, 0x22},
+	{WR_DATA, 0, 0x1F},
+	{WR_DATA, 0, 0x1B},
+	{WR_DATA, 0, 0x19},
+	{WR_DATA, 0, 0x18},
+	{WR_DATA, 0, 0x03},
 	{WR_DATA, 0, 0x00},
 	{WR_DATA, 0, 0x00},
 	{WR_DATA, 0, 0x00},
@@ -679,10 +732,10 @@ Lcd_init_t power_on_seq_s5d05a1x31_cooperve_SHARP[] =
 	{WR_DATA, 0, 0x01},
 	
 	{WR_CMND, 0x35, 0},
-	{WR_DATA, 0, 0x01},
+	{WR_DATA, 0, 0x00},
 	
 	{WR_CMND, 0x36, 0},
-	{WR_DATA, 0, 0x88}, //0x48 -> 0xD8 -> 0x88
+	{WR_DATA, 0, 0x98},
 	
 	{WR_CMND, 0x2A, 0},
 	{WR_DATA, 0, 0x00},
@@ -697,15 +750,15 @@ Lcd_init_t power_on_seq_s5d05a1x31_cooperve_SHARP[] =
 	{WR_DATA, 0, 0xDF},
 	
 	{WR_CMND, 0x3A, 0},
-	{WR_DATA, 0, 0x77}, // 0x55(16 bit/pixel) -> 0x77 (24 bit/pixel)
+	{WR_DATA, 0, 0x77},
 	
 	{WR_CMND, 0x11, 0},
-	
+
 	{SLEEP_MS, 0, 120}, // 120ms
 	
 	{WR_CMND, 0x29, 0},
 	
-	{CTRL_END, 0, 0}
+	{CTRL_END, 0, 0}	
 };
 
 
@@ -716,6 +769,7 @@ Lcd_init_t power_on_seq_s6d04k1_sdi[] =
 
 Lcd_init_t power_off_seq_AUO[] =
 {
+	{WR_CMND, 0x28,0}, // (DISPOFF)
 	{WR_CMND, 0x10,0}, // (SLPIN)
 	{SLEEP_MS, 0, 120},
 	{CTRL_END, 0, 0}
@@ -737,5 +791,49 @@ Lcd_init_t power_off_seq_SHARP[] =
 	{CTRL_END, 0, 0}
 };
 
+#if 0	//COOPERVE_TEST
+Lcd_init_t decrease_driving_current_seq_DTC[] =
+{
+    {WR_CMND, 0xF4,0}, // (PWRCTL)
+    {WR_DATA, 0, 0x0A},
+    {WR_DATA, 0, 0x00},	
+    {WR_DATA, 0, 0x00},
+    {WR_DATA, 0, 0x00},	
+    {WR_DATA, 0, 0x00},
+
+    {WR_DATA, 0, 0x00},	
+    {WR_DATA, 0, 0x00},
+    {WR_DATA, 0, 0x00},	
+    {WR_DATA, 0, 0x15},
+    {WR_DATA, 0, 0x6B},
+
+    {WR_DATA, 0, 0x00},	//NBT[2:0]
+    {WR_DATA, 0, 0x04},
+    {WR_DATA, 0, 0x00},
+    {WR_DATA, 0, 0x00},	//PIBT[2:0]
+    {CTRL_END, 0, 0}
+};
+Lcd_init_t rollback_driving_current_seq_DTC[] =
+{
+    {WR_CMND, 0xF4,0}, // (PWRCTL)
+    {WR_DATA, 0, 0x0A},
+    {WR_DATA, 0, 0x00},	
+    {WR_DATA, 0, 0x00},
+    {WR_DATA, 0, 0x00},	
+    {WR_DATA, 0, 0x00},
+
+    {WR_DATA, 0, 0x00},	
+    {WR_DATA, 0, 0x00},
+    {WR_DATA, 0, 0x00},	
+    {WR_DATA, 0, 0x15},
+    {WR_DATA, 0, 0x6B},
+
+    {WR_DATA, 0, 0x03},
+    {WR_DATA, 0, 0x04},
+    {WR_DATA, 0, 0x00},
+    {WR_DATA, 0, 0x02},
+    {CTRL_END, 0, 0}
+};
+#endif
 #endif /* __BCM_LCD_S6D05A1X31_COOPERVE_H */
 

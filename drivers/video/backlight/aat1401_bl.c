@@ -85,6 +85,12 @@ struct aat1401_bl_data {
 #endif
 };
 
+#if defined(CONFIG_BACKLIGHT_COOPERVE)
+//Debug code for RTC init problem @ power on/off test 
+extern u8 is_max8986_rtc_reset( void );
+extern void max8986_rtc_reset_debug_print( void );
+#endif
+
 struct brt_value{
 	int level;				// Platform setting values
 	int tune_level;			// Chip Setting values
@@ -180,34 +186,31 @@ struct brt_value brt_table_ktd[] = {
 #elif defined(CONFIG_BACKLIGHT_COOPERVE)
 struct brt_value brt_table_ktd[] = {
    { MIN_BRIGHTNESS_VALUE,  2 }, // Min pulse 31(33-2) by HW 
-   { 37,  3 },  
-   { 44,  4 }, 
-   { 51,  5 }, 
-   { 58,  6 }, 
-   { 65,  7 }, 
-   { 72,  8 }, 
-   { 79,  9 }, 
-   { 86,  10 }, 
-   { 93,  11 }, 
-   { 100,  12 }, 
-   { 108,  13 }, 
-   { 115,  14 },  
-   { 123,  15 },  
-   { 131,  16 }, 
-   { 139,  17 }, 
-   { 147,  18 },//default value   
-   { 156,  19 },
-   { 165,  20 }, 
-   { 174,  21 }, 
-   { 183,  22 }, 
-   { 192,  23 }, 
-   { 201,  24 },
-   { 210,  25 },
-   { 219,  26 },
-   { 228,  27 },
-   { 237,  28 },
-   { 246,  29 },
-   { MAX_BRIGHTNESS_VALUE,  30 }, // Max pulse 3(33-30) by HW
+   { 40,  3 },  
+   { 50,  4 }, 
+   { 60,  5 }, 
+   { 69,  6 }, 
+   { 79,  7 }, 
+   { 89,  8 }, 
+   { 99,  9 }, 
+   { 108,  10 }, 
+   { 118,  11 }, 
+   { 128,  12 }, 
+   { 138,  13 }, 
+   { 147,  14 },   //default value   
+   { 155,  15 }, 
+   { 163,  16 },
+   { 171,  17 },
+   { 180,  18 },
+   { 188,  19 },
+   { 196,  20 },
+   { 205,  21 },
+   { 213,  22 },
+   { 221,  23 },
+   { 230,  24 },
+   { 238,  25 },
+   { 246,  26 },
+   { MAX_BRIGHTNESS_VALUE,  27 }, // Max pulse 3(33-30) by HW    // +9
 };
 #else
 struct brt_value brt_table_ktd[] = {
@@ -301,6 +304,14 @@ if(backlight_mode==BACKLIGHT_RESUME)
     if(real_level == 0)
     {
 	mdelay(200);
+#if defined(CONFIG_BACKLIGHT_COOPERVE)
+	// Only for CooperVE : Debug code for RTC init problem
+	/* If RTC reset is occurred, then print the time information to debug */
+	if(is_max8986_rtc_reset() == 1)
+	{
+	  max8986_rtc_reset_debug_print();
+	}
+#endif
     }
     
     if(tune_level<=0)

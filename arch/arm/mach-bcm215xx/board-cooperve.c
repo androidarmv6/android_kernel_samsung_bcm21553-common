@@ -161,24 +161,24 @@
 #define GPT_AVAIL_BITMAP         0x3F
 
 #define BATT_FULL_VOLT		4200
-#define BATT_LEVEL5_VOLT	3960
-#define BATT_LEVEL4_VOLT	3860
-#define BATT_LEVEL3_VOLT	3770
-#define BATT_LEVEL2_VOLT	3730
-#define BATT_LEVEL1_VOLT	3680
-#define BATT_LEVEL0_VOLT	3530
-#define BATT_LEVEL0_1_VOLT	3480
+#define BATT_LEVEL5_VOLT	3942
+#define BATT_LEVEL4_VOLT	3868
+#define BATT_LEVEL3_VOLT	3790
+#define BATT_LEVEL2_VOLT	3740
+#define BATT_LEVEL1_VOLT	3715
+#define BATT_LEVEL0_VOLT	3570
+#define BATT_LEVEL0_1_VOLT	3510
 #define BATT_LOW_VOLT		3400
 
 extern int pmu_is_charger_inserted();
 #define KEY_PRESS_THRESHOLD	0x6d00
-#define KEY_3POLE_THRESHOLD	56	// ~ 55 and 57 ~, measured on Totoro
-#define KEY1_THRESHOLD_L	4	// 9 to 83, mesaured on Luisa
-#define KEY1_THRESHOLD_U	100
-#define KEY2_THRESHOLD_L	100	// 117 to 183, mesaured on Luisa
-#define KEY2_THRESHOLD_U	220
-#define KEY3_THRESHOLD_L	220	// 202 to 314, mesaured on Luisa
-#define KEY3_THRESHOLD_U	692
+#define KEY_3POLE_THRESHOLD	670	// ~ 55 and 57 ~, measured on Totoro
+#define KEY1_THRESHOLD_L	16	// 9 to 83, mesaured on Luisa
+#define KEY1_THRESHOLD_U	115
+#define KEY2_THRESHOLD_L	115	// 117 to 183, mesaured on Luisa
+#define KEY2_THRESHOLD_U	230
+#define KEY3_THRESHOLD_L	230	// 202 to 314, mesaured on Luisa
+#define KEY3_THRESHOLD_U	478
 
 
 extern int bcm_gpio_pull_up(unsigned int gpio, bool up);
@@ -243,6 +243,7 @@ static struct bcmsdhc_platform_data bcm21553_sdhc_data3 = {
 	.flags = SDHC_DEVTYPE_SD | SDHC_DISABLE_PED_MODE,
 	.cd_pullup_cfg = SDCD_PULLUP | SDCD_UPDOWN_ENABLE,
 	.irq_cd = 16,
+	.regl_id = "sd_a_vdd",
 	.syscfg_interface = board_sysconfig,
 	.cfg_card_detect = bcmsdhc_cfg_card_detect,
 	.external_reset = bcmsdhc_external_reset,
@@ -703,7 +704,7 @@ static struct bcm_keymap newKeymap[] = {
 #endif
 
 static struct bcm_keypad_platform_info bcm215xx_keypad_data = {
-	.row_num = 4,
+	.row_num = 2,
 	.col_num = 2,
 	.keymap = newKeymap,
 	.iocr_cfg = bcm_keypad_config_iocr,
@@ -921,7 +922,8 @@ static struct regulator_init_data dldo3_init_data = {
 static struct regulator_init_data dldo4_init_data = {
 	.constraints = {
 		.min_uV = 1800000,
-		.max_uV = 1800000,
+//		.max_uV = 1800000,
+		.max_uV = 3000000,
 		.valid_ops_mask = REGULATOR_CHANGE_VOLTAGE |
 			REGULATOR_CHANGE_STATUS,
 		.always_on = 0,
@@ -1087,6 +1089,25 @@ static struct regulator_init_data aldo1_init_data = {
 	.consumer_supplies = aldo1_consumers,
 };
 
+static struct regulator_consumer_supply dldo1_consumers[] = {
+	{
+		.dev = NULL,
+		.supply = "sd_a_vdd",
+	},
+};
+
+static struct regulator_init_data dldo1_init_data = {
+	.constraints = {
+		.min_uV = 2500000,
+		.max_uV = 3000000,
+		.valid_ops_mask = REGULATOR_CHANGE_STATUS,
+		.always_on = 0,
+		.boot_on = 0,
+	},
+	.num_consumer_supplies = ARRAY_SIZE(dldo1_consumers),
+	.consumer_supplies = dldo1_consumers,
+};
+
 static struct max8986_regl_init_data bcm21553_regulators[] = {
 	{
 		.regl_id = MAX8986_REGL_SIMLDO,
@@ -1141,6 +1162,11 @@ static struct max8986_regl_init_data bcm21553_regulators[] = {
 		.dsm_opmode = MAX8986_REGL_OFF_IN_DSM,
 		.init_data = &aldo1_init_data,
 	},
+	{
+		.regl_id = MAX8986_REGL_DLDO1,
+		.dsm_opmode = MAX8986_REGL_LPM_IN_DSM,
+		.init_data = &dldo1_init_data,
+	},	
 
 };
 
@@ -1157,12 +1183,12 @@ static struct max8986_regl_pdata regl_pdata = {
 		[MAX8986_REGL_ALDO7]	= 0x11,
 		//[MAX8986_REGL_ALDO8]	= 0x22,
 		[MAX8986_REGL_ALDO8]	= 0x00,
-		[MAX8986_REGL_ALDO9]	= 0x22,
+		[MAX8986_REGL_ALDO9]	= 0xAA,
 		[MAX8986_REGL_DLDO1]	= 0x11,
 		[MAX8986_REGL_DLDO2]	= 0x55,
 		[MAX8986_REGL_DLDO3]	= 0xAA,
 		[MAX8986_REGL_DLDO4]	= 0xAA,
-		[MAX8986_REGL_HCLDO1]	= 0x22,
+		[MAX8986_REGL_HCLDO1]	= 0xAA,
 		[MAX8986_REGL_HCLDO2]	= 0xAA,
 		[MAX8986_REGL_LVLDO]	= 0x11,
 		[MAX8986_REGL_SIMLDO]	= 0x11,
@@ -1190,7 +1216,7 @@ static struct max8986_audio_pdata audio_pdata = {
 };
 
 static struct max8986_power_pdata power_pdata = {
-	.usb_charging_cc = MAX8986_CHARGING_CURR_550MA,
+	.usb_charging_cc = MAX8986_CHARGING_CURR_450MA,
 	.wac_charging_cc = MAX8986_CHARGING_CURR_550MA,
 	.eoc_current = MAX8986_EOC_100MA,
 
@@ -1420,7 +1446,7 @@ static u32 pmu_event_callback(int event, int param)
 	/* These values are observed on ThunderbirdEDN31 */
 //	static u16 bat_adc[] = {0x2BE, 0x2D3, 0x2E8, 0x2FC, 0x311, 0x32C, 0x364};
 
-	static u32 TempAdcTable[] = {     786,732,674,612,550,488,428,373,322,276,236,201,171,145,123,104,97,91,}; 
+	static u32 TempAdcTable[] = {     794,738,679,618,554,493,432,375,324,279,242,205,176,147,126,112,105,98,}; 
 	static u32 TempDegreeTable[] ={-10,-5,     0,    5,  10,  15,  20, 25,  30,  35,  40, 45,  50,  55,  60, 63,65,67,};
 
 	static u16 Default4p2Volt;
@@ -2049,8 +2075,8 @@ static struct android_usb_platform_data android_usb_pdata = {
 	.product_id = 0x0005,
 	.adb_product_id = 0x0002,
 	.version = 0x0100,
-	.product_name = "GT-S5830I",
-	.manufacturer_name = "Samsung",
+	.product_name = "BCM21553-Thunderbird",
+	.manufacturer_name = "Broadcom",
 	.serial_number="0123456789ABCDEF",
 	.nluns = 1,
 };
@@ -2061,6 +2087,13 @@ static struct platform_device android_usb_device = {
       .dev        = {
             .platform_data = &android_usb_pdata,
       },
+};
+#endif
+
+#ifdef CONFIG_LEDS_BCM21553
+static struct platform_device bcm21553_device_leds = {
+	.name = "bcm21553-leds",
+	.id = -1,
 };
 #endif
 
@@ -2127,6 +2160,9 @@ static struct platform_device *devices[] __initdata = {
 #endif
 #ifdef CONFIG_BCM215XX_DSS
 	&bcm215xx_lcdc_device,
+#endif
+#ifdef CONFIG_LEDS_BCM21553
+	&bcm21553_device_leds,
 #endif
 #if defined (CONFIG_BCM_OTP)
 	&bcm_otp_device,
@@ -2262,7 +2298,16 @@ int board_sysconfig(uint32_t module, uint32_t op)
                         u32 val;
                         /* IOCR 0 */
                         val = readl(ADDR_SYSCFG_IOCR0) & ~(SYSCFG_IOCR0_CAMCK_GPIO_MUX);
-                        writel(val, ADDR_SYSCFG_IOCR0);
+						// for camera flash by ksh0807.kim
+						writel(val | 
+								SYSCFG_IOCR0_GPIO52_GPEN7_MUX |
+								SYSCFG_IOCR0_GPIO53_GPEN8_MUX , ADDR_SYSCFG_IOCR0);
+
+						/* IOCR 3 */
+						val = readl(ADDR_SYSCFG_IOCR2);
+						writel(val | 
+								SYSCFG_IOCR0_GPIO53_GPEN8_MUX_HI, ADDR_SYSCFG_IOCR2);
+						
                         /* IOCR 3 */
                         val = readl(ADDR_SYSCFG_IOCR3);
                          /* Clear bits 6,5 and 4 */
@@ -2484,6 +2529,9 @@ int board_sysconfig(uint32_t module, uint32_t op)
 				 SYSCFG_IOCR2_SD3DAT_PULL_CTRL(SD_PULL_UP | SD_PULL_DOWN)),
 			       ADDR_SYSCFG_IOCR2);
 		} else if (op == SYSCFG_ENABLE) {
+
+			unsigned int val = 0;
+			
 			/* Offset for IOCR2 = 0x0c */
 			writel(readl(ADDR_SYSCFG_IOCR2)
 			       & ~(SYSCFG_IOCR2_SD3CMD_PULL_CTRL(SD_PULL_UP | SD_PULL_DOWN)),
@@ -2500,14 +2548,16 @@ int board_sysconfig(uint32_t module, uint32_t op)
 			writel(readl(ADDR_SYSCFG_IOCR2)
 			       | SYSCFG_IOCR2_SD3DAT_PULL_CTRL(SD_PULL_UP),
 			       ADDR_SYSCFG_IOCR2);
-			
-			//Set SDIO1 Driving Strength
-			printk("SDIO3 Driving Strenght is 4mA\n");
-			writel((readl(ADDR_SYSCFG_IOCR4) | SYSCFG_IOCR4_SD3_DAT_DRV_STGTH(0x2)),
-							ADDR_SYSCFG_IOCR4);
-			
-			writel((readl(ADDR_SYSCFG_IOCR4) | SYSCFG_IOCR4_SD3_CLK_DRV_STGTH(0x2)),
-							ADDR_SYSCFG_IOCR4);
+
+			//Set SDIO3 Driving Strength			
+			printk(KERN_INFO "SDIO3 DS is set to 10mA\n");
+			val = readl(ADDR_SYSCFG_IOCR4);
+			val &=~(SYSCFG_IOCR4_SD3_DAT_DRV_STGTH(0x7));
+			val &=~(SYSCFG_IOCR4_SD3_CLK_DRV_STGTH(0x7));
+			val |=(SYSCFG_IOCR4_SD3_DAT_DRV_STGTH(0x6)+SYSCFG_IOCR4_SD3_CLK_DRV_STGTH(0x6));
+
+			writel(val, ADDR_SYSCFG_IOCR4); 
+
 		} else if (op == SYSCFG_DISABLE) {
 			/* Offset for IOCR2 = 0x0c */
 			writel(readl(ADDR_SYSCFG_IOCR2) &
@@ -2803,12 +2853,19 @@ int board_sysconfig(uint32_t module, uint32_t op)
 	case SYSCFG_SENSORS:
 		if(op == SYSCFG_ENABLE){
 			writel(readl(IO_ADDRESS(ADDR_SYSCFG_IOCR3_PHYS)) &0x7fffffff  , IO_ADDRESS(ADDR_SYSCFG_IOCR3_PHYS));	//Disable the 3rd BSC on GPIO7, GPIO15
-			writel(readl(HW_GPIO_BASE) & ~(0x3 << (ACC_SDA * 2))  | (0x2 << (ACC_SDA * 2)) , HW_GPIO_BASE);
-			writel(readl(HW_GPIO_BASE) & ~(0x3 << (ACC_SCL * 2))  | (0x2 << (ACC_SCL * 2)) , HW_GPIO_BASE);
-			writel(readl(HW_GPIO_BASE) & ~(0x3 << (GEO_SDA * 2))  | (0x2 << (GEO_SDA * 2)) , HW_GPIO_BASE);
-			writel(readl(HW_GPIO_BASE) & ~(0x3 << (GEO_SCL * 2))  | (0x2 << (GEO_SCL * 2)) , HW_GPIO_BASE);
-			writel(readl(HW_GPIO_BASE+4) & ~(0x3 <<( PROXI_SCL-16)*2 )  | (0x2 << ( PROXI_SCL-16)*2) , HW_GPIO_BASE+4);
-			writel(readl(HW_GPIO_BASE+4) & ~(0x3 <<( PROXI_SDA-16)*2)  | (0x2 << ( PROXI_SDA-16)*2) , HW_GPIO_BASE+4);
+			writel(readl(HW_GPIO_BASE) & ~(0x3 << (ACC_SDA * 2))  | (0x1 << (ACC_SDA * 2)) , HW_GPIO_BASE);
+			writel(readl(HW_GPIO_BASE) & ~(0x3 << (ACC_SCL * 2))  | (0x1 << (ACC_SCL * 2)) , HW_GPIO_BASE);
+			writel(readl(HW_GPIO_BASE) & ~(0x3 << (GEO_SDA * 2))  | (0x1 << (GEO_SDA * 2)) , HW_GPIO_BASE);
+			writel(readl(HW_GPIO_BASE) & ~(0x3 << (GEO_SCL * 2))  | (0x1 << (GEO_SCL * 2)) , HW_GPIO_BASE);
+			writel(readl(HW_GPIO_BASE+4) & ~(0x3 <<( PROXI_SCL-16)*2 )  | (0x1 << ( PROXI_SCL-16)*2) , HW_GPIO_BASE+4);
+			writel(readl(HW_GPIO_BASE+4) & ~(0x3 <<( PROXI_SDA-16)*2)  | (0x1 << ( PROXI_SDA-16)*2) , HW_GPIO_BASE+4);
+
+		        bcm_gpio_pull_up(PROXI_SCL, true);
+		        bcm_gpio_pull_up_down_enable(PROXI_SCL, true);
+
+		        bcm_gpio_pull_up(PROXI_SDA, true);     
+		        bcm_gpio_pull_up_down_enable(PROXI_SDA, true);			
+				
 		}
 		else if (op == SYSCFG_INIT){
 		/*[todo]Interrupt mode config*/
@@ -2938,6 +2995,63 @@ static void __init update_pm_sysparm(void)
 #endif
 }
 
+
+static void cooperve_init_gpio(void)
+{
+/* +++ H/W req */
+#define ADDR_GPIO_GPIPUD0 (HW_GPIO_BASE + 0x028) //0x088CE028 GPIO 0 - 31
+#define ADDR_GPIO_GPIPUD1 (HW_GPIO_BASE + 0x02c) //0x088CE02C GPIO 32 - 63
+
+#define IOTR_GPIO(GPIO) (~(3<<((GPIO%16)<<1)))
+#define GPIPEN_PULL_EN(GPIO) (1<<(GPIO%32))
+#define GPIPUD_PULL_DOWN(GPIO) (~(1<<(GPIO%32)))
+
+
+				/*Set as GPIO*/
+
+				writel(readl(ADDR_SYSCFG_IOCR5)|(1<<24),ADDR_SYSCFG_IOCR5);/*58,59,60*/
+				/* GPIO35_MUX set to GPIO35 */
+//				writel((readl(ADDR_SYSCFG_IOCR5) & SYSCFG_IOCR5_GPIO35_UARTA_OUT2N_MUX(0x00)),ADDR_SYSCFG_IOCR5);
+
+				/*Set as input */
+				writel(readl(ADDR_GPIO_IOTR0)&(~(3<<IOTR_GPIO(6))),ADDR_GPIO_IOTR0);
+				
+				writel(readl(ADDR_GPIO_IOTR0)&(~(3<<IOTR_GPIO(10))),ADDR_GPIO_IOTR0);
+				writel(readl(ADDR_GPIO_IOTR0)&(~(3<<IOTR_GPIO(11))),ADDR_GPIO_IOTR0);
+				writel(readl(ADDR_GPIO_IOTR0)&(~(3<<IOTR_GPIO(12))),ADDR_GPIO_IOTR0);
+// 				writel(readl(ADDR_GPIO_IOTR2)&(~(3<<IOTR_GPIO(35))),ADDR_GPIO_IOTR2);
+ 				writel(readl(ADDR_GPIO_IOTR3)&(~(3<<IOTR_GPIO(58))),ADDR_GPIO_IOTR3);				
+				writel(readl(ADDR_GPIO_IOTR3)&(~(3<<IOTR_GPIO(59))),ADDR_GPIO_IOTR3);
+				writel(readl(ADDR_GPIO_IOTR3)&(~(3<<IOTR_GPIO(60))),ADDR_GPIO_IOTR3);
+				
+
+				/*Enable pull up/down*/
+				writel(readl(ADDR_GPIO_GPIPEN0)|GPIPEN_PULL_EN(6),ADDR_GPIO_GPIPEN0);
+ 				writel(readl(ADDR_GPIO_GPIPEN0)|GPIPEN_PULL_EN(10),ADDR_GPIO_GPIPEN0);
+				writel(readl(ADDR_GPIO_GPIPEN0)|GPIPEN_PULL_EN(11),ADDR_GPIO_GPIPEN0);
+				writel(readl(ADDR_GPIO_GPIPEN0)|GPIPEN_PULL_EN(12),ADDR_GPIO_GPIPEN0);
+
+//				writel(readl(ADDR_GPIO_GPIPEN1)|GPIPEN_PULL_EN(35),ADDR_GPIO_GPIPEN1);
+				writel(readl(ADDR_GPIO_GPIPEN1)|GPIPEN_PULL_EN(58),ADDR_GPIO_GPIPEN1);
+				writel(readl(ADDR_GPIO_GPIPEN1)|GPIPEN_PULL_EN(59),ADDR_GPIO_GPIPEN1);
+				writel(readl(ADDR_GPIO_GPIPEN1)|GPIPEN_PULL_EN(60),ADDR_GPIO_GPIPEN1);
+
+				/*Set as pull down*/
+				writel(readl(ADDR_GPIO_GPIPUD0)&GPIPUD_PULL_DOWN(6),ADDR_GPIO_GPIPUD0);
+ 				writel(readl(ADDR_GPIO_GPIPUD0)&GPIPUD_PULL_DOWN(10),ADDR_GPIO_GPIPUD0);
+				writel(readl(ADDR_GPIO_GPIPUD0)&GPIPUD_PULL_DOWN(11),ADDR_GPIO_GPIPUD0);
+				writel(readl(ADDR_GPIO_GPIPUD0)&GPIPUD_PULL_DOWN(12),ADDR_GPIO_GPIPUD0);
+				
+//				writel(readl(ADDR_GPIO_GPIPUD1)&GPIPUD_PULL_DOWN(35),ADDR_GPIO_GPIPUD1);
+ 				writel(readl(ADDR_GPIO_GPIPUD1)&GPIPUD_PULL_DOWN(58),ADDR_GPIO_GPIPUD1);
+				writel(readl(ADDR_GPIO_GPIPUD1)&GPIPUD_PULL_DOWN(59),ADDR_GPIO_GPIPUD1);
+				writel(readl(ADDR_GPIO_GPIPUD1)&GPIPUD_PULL_DOWN(60),ADDR_GPIO_GPIPUD1);
+				
+/* --- H/W req */
+
+	
+
+}
 static void __init bcm21553_init_machine(void)
 {
 	bcm21553_platform_init();
@@ -2945,6 +3059,8 @@ static void __init bcm21553_init_machine(void)
 	athenaray_add_i2c_slaves();
 	athenaray_add_platform_data();
 	platform_add_devices(devices, ARRAY_SIZE(devices));
+	cooperve_init_gpio();
+
 #ifdef CONFIG_SPI
 	/*Function to register SPI board info : required when spi device is
 	   present */
@@ -2997,7 +3113,7 @@ static int __init ramdump_init(void)
 module_init(ramdump_init);
 
 /* TODO: Replace BCM1160 with BCM21553/AthenaRay once registered */
-MACHINE_START(BCM1160, "GT-S5830I Board")
+MACHINE_START(BCM1160, "BCM21553 ThunderbirdEDN31 platform")
 	/* Maintainer: Broadcom Corporation */
 	.phys_io = BCM21553_UART_A_BASE,
 	.io_pg_offst = (IO_ADDRESS(BCM21553_UART_A_BASE) >> 18) & 0xfffc,

@@ -66,6 +66,13 @@ LCD_Bus_t LCD_Bus = LCD_16BIT;
 CSL_LCDC_PAR_SPEED_t timingReg = {24, 25, 0, 3, 3, 0};
 CSL_LCDC_PAR_SPEED_t timingMem = {24, 25, 0, 3, 3, 0};
 
+#if 1 // to reduce fmr noise
+CSL_LCDC_PAR_SPEED_t timingRegOrg = {24, 25, 0, 3, 3, 2};
+CSL_LCDC_PAR_SPEED_t timingMemOrg = {24, 25, 0, 3, 3, 2};
+CSL_LCDC_PAR_SPEED_t timingRegForFMR = {24, 25, 0, 3, 11, 2};
+CSL_LCDC_PAR_SPEED_t timingMemForFMR = {24, 25, 0, 3, 11, 2};
+#endif
+
 LCD_dev_info_t LCD_device[1] = {
 	{
 	 .panel		= LCD_main_panel,
@@ -73,6 +80,8 @@ LCD_dev_info_t LCD_device[1] = {
 	 .width		= LCD_WIDTH,
 	 .bits_per_pixel= LCD_BITS_PER_PIXEL,
 	 .te_supported	= true,
+	 .physical_height = 70,	 
+	 .physical_width = 50,		 
 	 }
 };
 

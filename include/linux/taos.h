@@ -29,7 +29,11 @@
 #define TAOS_PROX_CLOSE   _IO(TAOS_PROX_IOC_MAGIC,2)      
 
 /* input device for proximity sensor */
+#if defined ( CONFIG_BOARD_COOPERVE )
+#define USE_INPUT_DEVICE 	1  /* 0 : No Use  ,  1: Use  */
+#else
 #define USE_INPUT_DEVICE 	0  /* 0 : No Use  ,  1: Use  */
+#endif
 
 #define USE_INTERRUPT		1
 #define INT_CLEAR    1 /* 0 = by polling operation, 1 = by interrupt operation */
@@ -54,7 +58,17 @@ struct taos_data {
 	struct i2c_client *client;
 	struct input_dev *input_dev;
 	struct work_struct work_prox;  /* for proximity sensor */
+#if defined ( CONFIG_BOARD_COOPERVE )
+	int enabled;
+	int delay;
+	int avg[3];
+	ktime_t prox_poll_delay;
+	struct hrtimer prox_timer;
+	struct workqueue_struct *prox_wq;
+	struct work_struct work_proxi; 	
+#endif
 	int             irq;
+	
 	struct hrtimer timer;
 	struct timer_list light_init_timer;
 };

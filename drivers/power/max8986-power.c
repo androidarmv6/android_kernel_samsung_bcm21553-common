@@ -99,10 +99,17 @@ DEFINE_MUTEX(spa_charger_mutex);
 #define BATT_LEVEL0_1_VOLT	3540
 #define BATT_LOW_VOLT		3400
 #endif
+#if defined(CONFIG_BOARD_COOPERVE)
+#define HIGH_SUSPEND_TEMP	600			//Spec was changed from 65 to 60 degree
+#define LOW_SUSPEND_TEMP	-40
+#define HIGH_RECOVER_TEMP	400			//Spec was changed from 43 to 40
+#define LOW_RECOVER_TEMP	0
+#elif defined(CONFIG_BOARD_TOTORO)
 #define HIGH_SUSPEND_TEMP	650
 #define LOW_SUSPEND_TEMP	-50
 #define HIGH_RECOVER_TEMP	430
 #define LOW_RECOVER_TEMP	0
+#endif
 
 
 #define BAT_30SEC_INTERVAL_RECHARGE (10*HZ) /* 10 sec*/
