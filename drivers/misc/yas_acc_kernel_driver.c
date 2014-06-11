@@ -46,7 +46,7 @@ extern int board_hw_revision;
 #define delay_to_jiffies(d)                                       ((d)?msecs_to_jiffies(d):1)
 #define actual_delay(d)                               (jiffies_to_msecs(delay_to_jiffies(d)))
 
-#if defined(CONFIG_BOARD_COOPERVE)
+#if defined(CONFIG_BOARD_COOPERVE) || defined(CONFIG_BOARD_TASSVE)
 #define YAS_ACC_DEV_MAJOR 405
 struct class *acc_class;
 #endif
@@ -124,7 +124,7 @@ struct yas_acc_private_data {
     int suspend_enable;
 };
 
-#if defined(CONFIG_BOARD_COOPERVE)
+#if defined(CONFIG_BOARD_COOPERVE) || defined(CONFIG_BOARD_TASSVE)
 static struct yas_acc_data g_accel;
 #endif
 static struct yas_acc_private_data *yas_acc_private_data = NULL;
@@ -613,7 +613,7 @@ static ssize_t yas_acc_wake_store(struct device *dev,
     return count;
 }
 
-#if defined(CONFIG_BOARD_COOPERVE)
+#if defined(CONFIG_BOARD_COOPERVE) || defined(CONFIG_BOARD_TASSVE)
 static ssize_t yas_acc_fs_data_read(struct device *dev,
                                          struct device_attribute *attr,
                                          char *buf)
@@ -686,7 +686,7 @@ static ssize_t yas_acc_calibration_store(struct device *dev,
            accel.xyz.v[0], accel.xyz.v[1], accel.xyz.v[2], accel.raw.v[0], accel.raw.v[1], accel.raw.v[2]);
     err = yas_acc_fast_calibration(data->driver, data_cal);      // calibration start
     yas_acc_measure(data->driver, &accel);
-#if defined(CONFIG_BOARD_COOPERVE)
+#if defined(CONFIG_BOARD_COOPERVE) || defined(CONFIG_BOARD_TASSVE)
     g_accel = accel;
 #endif
 
@@ -780,7 +780,7 @@ static ssize_t yas_acc_debug_suspend_store(struct device *dev,
 }
 #endif /* DEBUG */
 
-#if defined(CONFIG_BOARD_COOPERVE)
+#if defined(CONFIG_BOARD_COOPERVE) || defined(CONFIG_BOARD_TASSVE)
 static DEVICE_ATTR(acc_file, 
                    S_IRUGO, 
                    yas_acc_fs_data_read, 
@@ -827,7 +827,7 @@ static DEVICE_ATTR(data,
                    yas_acc_private_data_show,
                    NULL);
 static DEVICE_ATTR(calibration,
-#if defined(CONFIG_BOARD_TOTORO)
+#if defined(CONFIG_BOARD_TOTORO) || defined(CONFIG_BOARD_TASSVE)
                    S_IWUSR|S_IWGRP,
                    NULL,
 #elif defined(CONFIG_BOARD_COOPERVE)
@@ -897,7 +897,7 @@ static void yas_acc_work_func(struct work_struct *work)
 
     mutex_lock(&data->data_mutex);
     data->last = accel;
-#if defined(CONFIG_BOARD_COOPERVE)
+#if defined(CONFIG_BOARD_COOPERVE) || defined(CONFIG_BOARD_TASSVE)
     g_accel = accel;
 #endif
     mutex_unlock(&data->data_mutex);
@@ -1037,12 +1037,12 @@ struct i2c_driver yas_acc_driver = {
  * ---------------------------------------------------------------------------------------- */
 static int __init yas_acc_init(void)
 {
-#if defined(CONFIG_BOARD_COOPERVE)
+#if defined(CONFIG_BOARD_COOPERVE) || defined(CONFIG_BOARD_TASSVE)
     struct device *dev_t;
 #endif
     printk("[YAS]Acc Init Complete!\n");
 
-#if defined(CONFIG_BOARD_COOPERVE)
+#if defined(CONFIG_BOARD_COOPERVE) || defined(CONFIG_BOARD_TASSVE)
     acc_class = class_create(THIS_MODULE, "accelerometer");
 
     if (IS_ERR(acc_class)) 

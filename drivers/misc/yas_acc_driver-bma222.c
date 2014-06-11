@@ -197,7 +197,7 @@ static struct yas_bma222_data acc_data;
 
 /* Output data rate */
 static const struct yas_bma222_odr yas_bma222_odr_tbl[] = {
-#if defined(CONFIG_BOARD_TOTORO)
+#if defined(CONFIG_BOARD_TOTORO) || defined(CONFIG_BOARD_TASSVE)
     {1,   YAS_BMA222_BANDWIDTH_250HZ},
     {2,   YAS_BMA222_BANDWIDTH_125HZ},
     {4,   YAS_BMA222_BANDWIDTH_63HZ},

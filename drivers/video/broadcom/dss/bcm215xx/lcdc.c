@@ -1084,7 +1084,7 @@ static int __init lcdc_probe(struct platform_device *pdev)
 		busCfg.teCfg.type = LCDC_TE_CTRLR;
 		busCfg.teCfg.delay = 0;
 		busCfg.teCfg.pinSel = 0;
-#if defined(CONFIG_BOARD_TOTORO)
+#if defined(CONFIG_BOARD_TASSVE) || defined(CONFIG_BOARD_TOTORO)
 		busCfg.teCfg.edgeRising = true;
 #elif defined(CONFIG_BOARD_COOPERVE)
 		busCfg.teCfg.edgeRising = false;

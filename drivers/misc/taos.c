@@ -605,7 +605,7 @@ static void taos_work_func_prox(struct work_struct *work)
 	{
 #if defined(CONFIG_BOARD_TOTORO)
 		input_report_abs(taos_global->input_dev,ABS_DISTANCE,(int)vout);
-#elif defined(CONFIG_BOARD_COOPERVE)
+#elif defined(CONFIG_BOARD_COOPERVE) || defined(CONFIG_BOARD_TASSVE)
 		input_report_abs(taos_global->input_dev, ABS_X, !proximity_value);
 #endif
 		input_sync(taos_global->input_dev);

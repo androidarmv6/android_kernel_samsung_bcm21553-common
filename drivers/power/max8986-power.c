@@ -104,7 +104,7 @@ DEFINE_MUTEX(spa_charger_mutex);
 #define LOW_SUSPEND_TEMP	-40
 #define HIGH_RECOVER_TEMP	400			//Spec was changed from 43 to 40
 #define LOW_RECOVER_TEMP	0
-#elif defined(CONFIG_BOARD_TOTORO)
+#elif defined(CONFIG_BOARD_TASSVE) || defined(CONFIG_BOARD_TOTORO)
 #define HIGH_SUSPEND_TEMP	650
 #define LOW_SUSPEND_TEMP	-50
 #define HIGH_RECOVER_TEMP	430
