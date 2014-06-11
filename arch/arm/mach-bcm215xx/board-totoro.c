@@ -1,7 +1,7 @@
 /*******************************************************************************
 * Copyright 2010 Broadcom Corporation.  All rights reserved.
 *
-*	@file	arch/arm/mach-bcm215xx/board-cooperve.c
+*	@file	arch/arm/mach-bcm215xx/board-totoro.c
 *
 * Unless you and Broadcom execute a separate written software license agreement
 * governing use of this software, this software is licensed to you under the
@@ -159,25 +159,25 @@
  * Reset the bitmap to indicate the GPT not to be used on AP
  */
 #define GPT_AVAIL_BITMAP         0x3F
-
 #define BATT_FULL_VOLT		4200
-#define BATT_LEVEL5_VOLT	3942
-#define BATT_LEVEL4_VOLT	3868
+#define BATT_LEVEL5_VOLT	3950
+#define BATT_LEVEL4_VOLT	3860
 #define BATT_LEVEL3_VOLT	3790
 #define BATT_LEVEL2_VOLT	3740
-#define BATT_LEVEL1_VOLT	3715
-#define BATT_LEVEL0_VOLT	3570
-#define BATT_LEVEL0_1_VOLT	3510
+#define BATT_LEVEL1_VOLT	3680
+#define BATT_LEVEL0_VOLT	3580
+#define BATT_LEVEL0_1_VOLT	3500
 #define BATT_LOW_VOLT		3400
+
 
 extern int pmu_is_charger_inserted();
 #define KEY_PRESS_THRESHOLD	0x6d00
 #define KEY_3POLE_THRESHOLD	670	// ~ 55 and 57 ~, measured on Totoro
-#define KEY1_THRESHOLD_L	16	// 9 to 83, mesaured on Luisa
-#define KEY1_THRESHOLD_U	115
-#define KEY2_THRESHOLD_L	115	// 117 to 183, mesaured on Luisa
-#define KEY2_THRESHOLD_U	230
-#define KEY3_THRESHOLD_L	230	// 202 to 314, mesaured on Luisa
+#define KEY1_THRESHOLD_L	0	// 9 to 83, mesaured on Luisa
+#define KEY1_THRESHOLD_U	104
+#define KEY2_THRESHOLD_L	104	// 117 to 183, mesaured on Luisa
+#define KEY2_THRESHOLD_U	220
+#define KEY3_THRESHOLD_L	220	// 202 to 314, mesaured on Luisa
 #define KEY3_THRESHOLD_U	478
 
 
@@ -565,17 +565,17 @@ static void bcm_keypad_config_iocr(int row, int col)
 	writel((SYSCFG_IOCR1_KEY_ROW(row) | SYSCFG_IOCR1_KEY_COL(col)),
 				ADDR_SYSCFG_IOCR1);
 }
-#ifdef CONFIG_INPUT_TOUCHSCREEN
+#if defined(CONFIG_TOUCHSCREEN_MMS128_REV04) || defined(CONFIG_TOUCHSCREEN_MMS128) ||  defined(CONFIG_TOUCHSCREEN_F760) 
 static struct bcm_keymap newKeymap[] = {
 	{BCM_KEY_ROW_0, BCM_KEY_COL_0, "Volume Up", KEY_VOLUMEUP},
-	{BCM_KEY_ROW_0, BCM_KEY_COL_1, "Volume Down", KEY_VOLUMEDOWN},
+	{BCM_KEY_ROW_0, BCM_KEY_COL_1, "unused", 0},
 	{BCM_KEY_ROW_0, BCM_KEY_COL_2, "unused", 0},
 	{BCM_KEY_ROW_0, BCM_KEY_COL_3, "unused", 0},
 	{BCM_KEY_ROW_0, BCM_KEY_COL_4, "unused", 0},
 	{BCM_KEY_ROW_0, BCM_KEY_COL_5, "unused", 0},
 	{BCM_KEY_ROW_0, BCM_KEY_COL_6, "unused", 0},
 	{BCM_KEY_ROW_0, BCM_KEY_COL_7, "unused", 0},
-	{BCM_KEY_ROW_1, BCM_KEY_COL_0, "key home", KEY_HOME},
+	{BCM_KEY_ROW_1, BCM_KEY_COL_0, "Volume Down", KEY_VOLUMEDOWN},
 	{BCM_KEY_ROW_1, BCM_KEY_COL_1, "unused", 0},
 	{BCM_KEY_ROW_1, BCM_KEY_COL_2, "unused", 0},
 	{BCM_KEY_ROW_1, BCM_KEY_COL_3, "unused", 0},
@@ -583,8 +583,8 @@ static struct bcm_keymap newKeymap[] = {
 	{BCM_KEY_ROW_1, BCM_KEY_COL_5, "unused", 0},
 	{BCM_KEY_ROW_1, BCM_KEY_COL_6, "unused", 0},
 	{BCM_KEY_ROW_1, BCM_KEY_COL_7, "unused", 0},
-	{BCM_KEY_ROW_2, BCM_KEY_COL_0, "unused", 0},
-	{BCM_KEY_ROW_2, BCM_KEY_COL_1, "unused", 0},
+	{BCM_KEY_ROW_2, BCM_KEY_COL_0, "key home", KEY_HOME},
+	{BCM_KEY_ROW_2, BCM_KEY_COL_1, "key menu", KEY_MENU},
 	{BCM_KEY_ROW_2, BCM_KEY_COL_2, "unused", 0},
 	{BCM_KEY_ROW_2, BCM_KEY_COL_3, "unused", 0},
 	{BCM_KEY_ROW_2, BCM_KEY_COL_4, "unused", 0},
@@ -592,7 +592,7 @@ static struct bcm_keymap newKeymap[] = {
 	{BCM_KEY_ROW_2, BCM_KEY_COL_6, "unused", 0},
 	{BCM_KEY_ROW_2, BCM_KEY_COL_7, "unused", 0},
 	{BCM_KEY_ROW_3, BCM_KEY_COL_0, "unused", 0},
-	{BCM_KEY_ROW_3, BCM_KEY_COL_1, "unused", 0},
+	{BCM_KEY_ROW_3, BCM_KEY_COL_1, "key back", KEY_BACK},
 	{BCM_KEY_ROW_3, BCM_KEY_COL_2, "unused", 0},
 	{BCM_KEY_ROW_3, BCM_KEY_COL_3, "unused", 0},
 	{BCM_KEY_ROW_3, BCM_KEY_COL_4, "unused", 0},
@@ -634,7 +634,7 @@ static struct bcm_keymap newKeymap[] = {
 };
 #endif
 
-#if 0//def CONFIG_TOUCHSCREEN_TMA340
+#ifdef CONFIG_TOUCHSCREEN_TMA340
 static struct bcm_keymap newKeymap[] = {
 	{BCM_KEY_ROW_0, BCM_KEY_COL_0, "Volume Up", KEY_VOLUMEUP},
 	{BCM_KEY_ROW_0, BCM_KEY_COL_1, "unused", 0},
@@ -704,8 +704,8 @@ static struct bcm_keymap newKeymap[] = {
 #endif
 
 static struct bcm_keypad_platform_info bcm215xx_keypad_data = {
-	.row_num = 2,
-	.col_num = 2,
+	.row_num = 3,
+	.col_num = 1,
 	.keymap = newKeymap,
 	.iocr_cfg = bcm_keypad_config_iocr,
 	.bcm_keypad_base = (void *)__iomem IO_ADDRESS(BCM21553_KEYPAD_BASE),
@@ -777,13 +777,13 @@ static struct platform_device android_pmem_device = {
 #endif
 
 #if defined (CONFIG_BRCM_HAL_CAM)
-struct i2c_slave_platform_data cooperve_cam_pdata = {
+struct i2c_slave_platform_data totoro_cam_pdata = {
         .i2c_spd = I2C_SPD_400K,
 };
 
 static struct i2c_board_info __initdata bcm21553_cam_i2c_board_info[] = {
-        {I2C_BOARD_INFO("cami2c", (0x5A >> 1)),
-         .platform_data = (void *)&cooperve_cam_pdata,
+        {I2C_BOARD_INFO("cami2c", (0x40 >> 1)),
+         .platform_data = (void *)&totoro_cam_pdata,
          .irq = IRQ_CAM_CCP2, 
          },
 };
@@ -893,10 +893,12 @@ static struct regulator_consumer_supply dldo3_consumers[] = {
 		.dev = NULL,
 		.supply = "cam_vddi",
 	},
+#if 0	
 	{
 		.dev = NULL,
 		.supply = "haptic_pwm",
 	},
+#endif	
 };
 
 static struct regulator_init_data dldo3_init_data = {
@@ -922,8 +924,7 @@ static struct regulator_init_data dldo3_init_data = {
 static struct regulator_init_data dldo4_init_data = {
 	.constraints = {
 		.min_uV = 1800000,
-//		.max_uV = 1800000,
-		.max_uV = 3000000,
+		.max_uV = 1800000,
 		.valid_ops_mask = REGULATOR_CHANGE_VOLTAGE |
 			REGULATOR_CHANGE_STATUS,
 		.always_on = 0,
@@ -937,7 +938,7 @@ static struct regulator_init_data dldo4_init_data = {
 static struct regulator_consumer_supply hcldo1_consumers[] = {
 	{
 		.dev = NULL,
-		.supply = "touch_keyled",
+		.supply = "prox_vcc",
 	},
 };
 
@@ -1149,7 +1150,7 @@ static struct max8986_regl_init_data bcm21553_regulators[] = {
 	},
 	{
 		.regl_id = MAX8986_REGL_HCLDO1,
-		.dsm_opmode = MAX8986_REGL_OFF_IN_DSM,
+		.dsm_opmode = MAX8986_REGL_ON_IN_DSM/*MAX8986_REGL_OFF_IN_DSM*/,
 		.init_data = &hcldo1_init_data,
 	},
 	{
@@ -1166,7 +1167,7 @@ static struct max8986_regl_init_data bcm21553_regulators[] = {
 		.regl_id = MAX8986_REGL_DLDO1,
 		.dsm_opmode = MAX8986_REGL_LPM_IN_DSM,
 		.init_data = &dldo1_init_data,
-	},	
+	},
 
 };
 
@@ -1181,10 +1182,9 @@ static struct max8986_regl_pdata regl_pdata = {
 		[MAX8986_REGL_ALDO5]	= 0x01,
 		[MAX8986_REGL_ALDO6]	= 0x11,
 		[MAX8986_REGL_ALDO7]	= 0x11,
-		//[MAX8986_REGL_ALDO8]	= 0x22,
-		[MAX8986_REGL_ALDO8]	= 0x00,
-		[MAX8986_REGL_ALDO9]	= 0xAA,
-		[MAX8986_REGL_DLDO1]	= 0x11,
+		[MAX8986_REGL_ALDO8]	= 0x22,
+		[MAX8986_REGL_ALDO9]	= 0x22,
+		[MAX8986_REGL_DLDO1]	= 0x00,
 		[MAX8986_REGL_DLDO2]	= 0x55,
 		[MAX8986_REGL_DLDO3]	= 0xAA,
 		[MAX8986_REGL_DLDO4]	= 0xAA,
@@ -1217,7 +1217,7 @@ static struct max8986_audio_pdata audio_pdata = {
 
 static struct max8986_power_pdata power_pdata = {
 	.usb_charging_cc = MAX8986_CHARGING_CURR_450MA,
-	.wac_charging_cc = MAX8986_CHARGING_CURR_550MA,
+	.wac_charging_cc = MAX8986_CHARGING_CURR_450MA,
 	.eoc_current = MAX8986_EOC_100MA,
 
 	.temp_adc_channel =  0,
@@ -1346,7 +1346,6 @@ static void Bcm_HEADSET_GpioInit_Setting()
 }
 
 
-
 static int calculate_batt_level(int batt_volt)
 {
 	int scaled_level = 0;
@@ -1406,7 +1405,7 @@ static int calculate_batt_level(int batt_volt)
 					scaled_level = prev_scaled_level+1;
 					prev_scaled_level = scaled_level;
 				}
-	}
+			}
 			else
 				scaled_level = prev_scaled_level;
 		}	
@@ -1445,8 +1444,11 @@ static u32 pmu_event_callback(int event, int param)
 //	static u16 bat_vol[] = {3400, 3500, 3600, 3720, 3800, 3950, 4200};
 	/* These values are observed on ThunderbirdEDN31 */
 //	static u16 bat_adc[] = {0x2BE, 0x2D3, 0x2E8, 0x2FC, 0x311, 0x32C, 0x364};
-
-	static u32 TempAdcTable[] = {     794,738,679,618,554,493,432,375,324,279,242,205,176,147,126,112,105,98,}; 
+#if defined(CONFIG_TARGET_LOCALE_AUS_TEL)
+	static u32 TempAdcTable[] = {     775,721,664,602,541,479,420,366,315,270,230,196,166,141,119,100,93,88,}; 
+#else
+	static u32 TempAdcTable[] = {     786,732,674,612,550,488,428,373,322,276,236,201,171,145,123,104,97,91,}; 
+#endif
 	static u32 TempDegreeTable[] ={-10,-5,     0,    5,  10,  15,  20, 25,  30,  35,  40, 45,  50,  55,  60, 63,65,67,};
 
 	static u16 Default4p2Volt;
@@ -1471,7 +1473,7 @@ static u32 pmu_event_callback(int event, int param)
 		pr_err("%s: failed to allocate GPIO for PMU IRQ\n",
 			__func__);
 	}
-#endif	
+#endif
 
 	if(SYSPARM_GetDefault4p2VoltReading())	
 //		Default4p2Volt = SYSPARM_GetDefault4p2VoltReading();
@@ -1580,6 +1582,8 @@ static void max8986_sysparms(struct max8986 *max8986)
 {
 	max8986_load_sysparm(PMU_REG_0x3F_PM_ADISCHARG2,
 			     MAX8986_PM_REG_ADISCHARGE2, max8986);
+				 
+	max8986->write_dev(max8986, MAX8986_PM_REG_ADISCHARGE1, 0x0E);
 }
 #endif /* CONFIG_BRCM_FUSE_SYSPARM */
 
@@ -1648,7 +1652,7 @@ static struct qt602240_platform_data qt602240_platform_data = {
 
 #endif
 
-#if defined(CONFIG_INPUT_YAS_ACCELEROMETER)
+#if defined(CONFIG_SENSORS_BMA222)
 #define ACC_SDA 15
 #define ACC_SCL 7
 
@@ -1692,49 +1696,26 @@ static struct platform_device gp2a_i2c_gpio_device = {
 #endif
 #endif
 
-#if defined(CONFIG_SENSORS_TAOS)
-#define PROXI_SDA 28
-#define PROXI_SCL 31
-
-#if defined(CONFIG_I2C_GPIO)
-static struct i2c_gpio_platform_data taos_i2c_gpio_data = {
-        .sda_pin    = PROXI_SDA,
-        .scl_pin    = PROXI_SCL,
-        .udelay  = 3,  //// brian :3
-        .timeout = 100,
-};
-
-static struct platform_device taos_i2c_gpio_device = {
-        .name       = "i2c-gpio",
-        .id     = 0x5,
-        .dev        = {
-                .platform_data  = &taos_i2c_gpio_data,
-        },
-};
-#endif
-#endif
-
-#if defined(CONFIG_INPUT_YAS_MAGNETOMETER)
+#if defined(CONFIG_SENSORS_MMC328X)
 #define GEO_SDA 14
 #define GEO_SCL 5
 
 #if defined(CONFIG_I2C_GPIO)
-static struct i2c_gpio_platform_data i2c_gpio_data = {
+static struct i2c_gpio_platform_data mmc328x_i2c_gpio_data = {
         .sda_pin    = GEO_SDA,
         .scl_pin    = GEO_SCL,
         .udelay  = 3,  //// brian :3
         .timeout = 100,
 };
 
-static struct platform_device i2c_gpio_device = {
+static struct platform_device mmc328x_i2c_gpio_device = {
         .name       = "i2c-gpio",
         .id     = 0x6,
         .dev        = {
-                .platform_data  = &i2c_gpio_data,
+                .platform_data  = &mmc328x_i2c_gpio_data,
         },
 };
 #endif
-
 #endif
 static void sensors_init(void)
 {
@@ -1748,66 +1729,13 @@ module_init(sensors_init);
 #define TSP_SDA 27
 #define TSP_SCL 26
 
-#if 0
-static int cyttsp_init(void)
-{
-	/* add any special code to initialize any required system hw
-	 * such as regulators or gpio pins
-	 */
-	gpio_request(TSP_INT, "ts_irq");
-	gpio_direction_input(TSP_INT);
-	bcm_gpio_pull_up(TSP_INT, true);
-	bcm_gpio_pull_up_down_enable(TSP_INT, true);
-	set_irq_type(GPIO_TO_IRQ(TSP_INT), IRQF_TRIGGER_FALLING);
-	return 0;
-}
-
-static void cyttsp_exit(void)
-{
-	gpio_free(TSP_INT);
-}
-
-static int cyttsp_wakeup(void)
- {
- 	return 0;
- }
- 
-static struct cyttsp_platform_data cypress_ttsp_platform_data = {
-	.maxx = 239,
-	.maxy = 319,
-	.use_hndshk = 1,
-	.use_sleep = 1,
-	.act_dist = CY_ACT_DIST_DFLT,	/* Active distance */
-	/* change act_intrvl to customize the Active power state
-	 * scanning/processing refresh interval for Operating mode
-	 */
-	.act_intrvl = CY_ACT_INTRVL_DFLT,
-	/* change tch_tmout to customize the touch timeout for the
-	 * Active power state for Operating mode
-	 */
-	.tch_tmout = CY_TCH_TMOUT_DFLT,
-	/* change lp_intrvl to customize the Low Power power state
-	 * scanning/processing refresh interval for Operating mode
-	 */
-	.lp_intrvl = CY_LP_INTRVL_DFLT,
-	.wakeup = cyttsp_wakeup,
-	.init = cyttsp_init,
-	.exit = cyttsp_exit,
-	.name = CY_I2C_NAME,
-	.irq_gpio = TSP_INT,
-	.bl_keys = 0,
- };
- 
-
-
-#endif
 
 #if defined(CONFIG_I2C_GPIO)
 static struct i2c_gpio_platform_data touch_i2c_gpio_data = {
         .sda_pin    = TSP_SDA,
         .scl_pin    = TSP_SCL,
         .udelay  = 3,  //// brian :3
-        .timeout = 100,
+        .timeout = 20,
 };
 
 static struct platform_device touch_i2c_gpio_device = {
@@ -1819,6 +1747,27 @@ static struct platform_device touch_i2c_gpio_device = {
 };
 
 #endif
+
+static struct i2c_board_info __initdata athenaray_i2cgpio0_board_info[] = {
+#if defined(CONFIG_TOUCHSCREEN_MMS128_REV04) || defined(CONFIG_TOUCHSCREEN_MMS128)
+	{
+				I2C_BOARD_INFO("melfas-mms128", 0x48),
+				.irq = GPIO_TO_IRQ(TSP_INT),
+	 },
+#endif
+#if defined(CONFIG_TOUCHSCREEN_F760) 
+	{
+				I2C_BOARD_INFO("silabs-f760", 0x20),
+				.irq = GPIO_TO_IRQ(TSP_INT),
+	},
+#endif
+#if defined(CONFIG_TOUCHSCREEN_TMA340)
+	{
+				I2C_BOARD_INFO("synaptics-rmi-ts", 0x20),
+				.irq = GPIO_TO_IRQ(TSP_INT),
+	},
+#endif
+};
 
 #if defined(CONFIG_BRCM_HEADSET)  || defined(CONFIG_BRCM_HEADSET_MODULE)
 #define HEADSET_DET_GPIO        33    /* HEADSET DET */
@@ -1869,57 +1818,27 @@ static struct i2c_board_info __initdata athenaray_i2c2_board_info[] = {
 #endif
 };
 
-static struct i2c_board_info __initdata athenaray_i2c3_board_info[] = {
-#ifdef CONFIG_TOUCHSCREEN_QT602240
-	{
-				I2C_BOARD_INFO("qt602240_ts", 0x4b),
-				.platform_data = &qt602240_platform_data,
-				.irq = GPIO_TO_IRQ(PEN_IRQ_GPIO),
-	 },
-#endif
-};
-
-static struct i2c_board_info __initdata athenaray_i2cgpio0_board_info[] = {
-#if 0
-	{
-				I2C_BOARD_INFO("synaptics-rmi-ts", 0x48),
-				.irq = GPIO_TO_IRQ(TSP_INT),
-	},
-#endif
-#if defined(CONFIG_TOUCHSCREEN_MMS128_TASSCOOPER)
-	{
-				I2C_BOARD_INFO("melfas-mms128", 0x48),
-				.irq = GPIO_TO_IRQ(TSP_INT),
-	},
-#endif
-#ifdef CONFIG_TOUCHSCREEN_TMA340_COOPERVE
-	{
-				I2C_BOARD_INFO("synaptics-rmi-ts", 0x20),
-				.irq = GPIO_TO_IRQ(TSP_INT),
-	},
-#endif
-};
 
 static struct i2c_board_info __initdata athenaray_i2cgpio1_board_info[] = {
-#if defined  (CONFIG_INPUT_YAS_ACCELEROMETER)
+#if defined  (CONFIG_SENSORS_BMA222)
 	{
-		I2C_BOARD_INFO("accelerometer", 0x08),
+		I2C_BOARD_INFO("bma222", 0x08),
 	},
 #endif
  };
 
 static struct i2c_board_info __initdata athenaray_i2cgpio2_board_info[] = {
-#if defined  (CONFIG_SENSORS_TAOS)
+#if defined  (CONFIG_SENSORS_GP2A)
 	{
-		I2C_BOARD_INFO("taos", 0x39),
+		I2C_BOARD_INFO("gp2a_prox", 0x44),
 	},
 #endif
  };
 
 static struct i2c_board_info __initdata athenaray_i2cgpio3_board_info[] = {
-#if defined  (CONFIG_INPUT_YAS_MAGNETOMETER)
+#if defined  (CONFIG_SENSORS_MMC328X)
 	{
-		I2C_BOARD_INFO("geomagnetic", 0x2e),
+		I2C_BOARD_INFO("mmc328x", 0x30),
 	},
  #endif
 };
@@ -1943,15 +1862,15 @@ static void athenaray_add_i2c_slaves(void)
 	i2c_register_board_info(0x3, athenaray_i2cgpio0_board_info,
 				ARRAY_SIZE(athenaray_i2cgpio0_board_info));
 
-#if defined (CONFIG_INPUT_YAS_ACCELEROMETER)
+#if defined (CONFIG_SENSORS_BMA222)
 	i2c_register_board_info(0x4, athenaray_i2cgpio1_board_info,
 				ARRAY_SIZE(athenaray_i2cgpio1_board_info));
 #endif
-#if defined (CONFIG_SENSORS_TAOS)
+#if defined (CONFIG_SENSORS_GP2A)
 	i2c_register_board_info(0x5, athenaray_i2cgpio2_board_info,
 				ARRAY_SIZE(athenaray_i2cgpio2_board_info));
 #endif
-#if defined (CONFIG_INPUT_YAS_MAGNETOMETER)
+#if defined (CONFIG_SENSORS_MMC328X)
 	i2c_register_board_info(0x6, athenaray_i2cgpio3_board_info,
 				ARRAY_SIZE(athenaray_i2cgpio3_board_info));
 #endif
@@ -2075,7 +1994,7 @@ static struct android_usb_platform_data android_usb_pdata = {
 	.product_id = 0x0005,
 	.adb_product_id = 0x0002,
 	.version = 0x0100,
-	.product_name = "GT-S5830I",
+	.product_name = "GT-S5360",
 	.manufacturer_name = "Samsung",
 	.serial_number="0123456789ABCDEF",
 	.nluns = 1,
@@ -2087,13 +2006,6 @@ static struct platform_device android_usb_device = {
       .dev        = {
             .platform_data = &android_usb_pdata,
       },
-};
-#endif
-
-#ifdef CONFIG_LEDS_BCM21553
-static struct platform_device bcm21553_device_leds = {
-	.name = "bcm21553-leds",
-	.id = -1,
 };
 #endif
 
@@ -2149,8 +2061,8 @@ static struct platform_device *devices[] __initdata = {
 #if defined(CONFIG_I2C_GPIO)
 	&touch_i2c_gpio_device,
 	&bma222_i2c_gpio_device,
-	&taos_i2c_gpio_device,
-	&i2c_gpio_device,
+	&gp2a_i2c_gpio_device,
+	&mmc328x_i2c_gpio_device,
 #endif
 #ifdef CONFIG_SPI
 	&bcm21xx_device_spi,
@@ -2160,9 +2072,6 @@ static struct platform_device *devices[] __initdata = {
 #endif
 #ifdef CONFIG_BCM215XX_DSS
 	&bcm215xx_lcdc_device,
-#endif
-#ifdef CONFIG_LEDS_BCM21553
-	&bcm21553_device_leds,
 #endif
 #if defined (CONFIG_BCM_OTP)
 	&bcm_otp_device,
@@ -2251,9 +2160,15 @@ int board_sysconfig(uint32_t module, uint32_t op)
 			writel(readl(ADDR_SYSCFG_IOCR2) |
 				(SYSCFG_IOCR2_OSC2_ENABLE),
 				ADDR_SYSCFG_IOCR2);
+                	writel(readl(ADDR_GPIO_GPIPEN1) &
+				(0xFFFFFFFE), ADDR_GPIO_GPIPEN1);
+                   
 		} else {
 			/* Configure IOCR0[29].IOCR0[25] = 10 (GPIO[49:44])*/
 			/* Configure IOCR0[29].IOCR0[25] = 00 (LCDCTRL,LCDD[0])*/
+
+                  	writel(readl(ADDR_GPIO_GPIPEN1) &
+				(0xFFFFFFFE), ADDR_GPIO_GPIPEN1);
 			writel((readl(ADDR_SYSCFG_IOCR0) &
 				~(SYSCFG_IOCR0_LCD_CTRL_MUX | SYSCFG_IOCR0_MPHI_MUX)),
 				ADDR_SYSCFG_IOCR0);
@@ -2298,16 +2213,7 @@ int board_sysconfig(uint32_t module, uint32_t op)
                         u32 val;
                         /* IOCR 0 */
                         val = readl(ADDR_SYSCFG_IOCR0) & ~(SYSCFG_IOCR0_CAMCK_GPIO_MUX);
-						// for camera flash by ksh0807.kim
-						writel(val | 
-								SYSCFG_IOCR0_GPIO52_GPEN7_MUX |
-								SYSCFG_IOCR0_GPIO53_GPEN8_MUX , ADDR_SYSCFG_IOCR0);
-
-						/* IOCR 3 */
-						val = readl(ADDR_SYSCFG_IOCR2);
-						writel(val | 
-								SYSCFG_IOCR0_GPIO53_GPEN8_MUX_HI, ADDR_SYSCFG_IOCR2);
-						
+                        writel(val, ADDR_SYSCFG_IOCR0);
                         /* IOCR 3 */
                         val = readl(ADDR_SYSCFG_IOCR3);
                          /* Clear bits 6,5 and 4 */
@@ -2318,12 +2224,43 @@ int board_sysconfig(uint32_t module, uint32_t op)
                                  SYSCFG_IOCR3_CAMHVS_PU |
                                  SYSCFG_IOCR3_CAMDCK_PD |
                                  SYSCFG_IOCR3_CAMDCK_PU);
+                        /* Pull down : CAM data, CAM Hsync, CAM Vysnc, CAM clock */
+                        val |= (SYSCFG_IOCR3_CAMCK_DIS | 
+                                SYSCFG_IOCR3_CAMD_PD   |
+                                SYSCFG_IOCR3_CAMHVS_PD | 
+                                SYSCFG_IOCR3_CAMDCK_PD);                         
                         writel(val, ADDR_SYSCFG_IOCR3);
                         /* IOCR 4*/
                         val = readl(ADDR_SYSCFG_IOCR4);
                         /* Bits 14:12 */
                         val |= SYSCFG_IOCR4_CAM_DRV_STGTH(0x7);
                         writel(val, ADDR_SYSCFG_IOCR4);
+                        /* IOCR 10 */
+                        val = readl(ADDR_SYSCFG_IOCR10);
+                        val &= ~(3 << 8); // Bits 9:8 disable internal pull-up of BSC2
+                        writel(val, ADDR_SYSCFG_IOCR10);
+                        /* BSC2_CS */
+                        val = readl(ADDR_BSC2_CS);
+                        val = 0; // bit0, 6, 7 need set to 0
+                        writel(val, ADDR_BSC2_CS);
+                        /* IOCR 5 for trace muxing */
+                        val = readl(ADDR_SYSCFG_IOCR5);
+                        val |= SYSCFG_IOCR5_CAM_TRACE_EN;
+                        writel(val, ADDR_SYSCFG_IOCR5);
+                        val = readl(ADDR_SYSCFG_IOCR1);
+                        val &= ~(1<<4);
+                        writel(val, ADDR_SYSCFG_IOCR1);  //set gpio
+
+                        val = readl(ADDR_GPIO_IOTR0);
+                        val &= ~(3<<8);  //clear register
+                        val |= (2<<8);//set register
+                        writel(val, ADDR_GPIO_IOTR0);  //set direction
+
+                        val = readl(ADDR_GPIO_GPOR0);
+                        val &= ~(1<<4);//set register
+                        writel(val, ADDR_GPIO_GPOR0);  //set gpio value
+
+
                   } else if(op == SYSCFG_ENABLE){
                         u32 val;
                          /* IOCR 0 */
@@ -2341,20 +2278,6 @@ int board_sysconfig(uint32_t module, uint32_t op)
 			val |= (1 << 26);
 #endif
                         writel(val, ADDR_SYSCFG_IOCR5);
-#if 1                        
-						// GPIO 4 :Output
-						val = readl(ADDR_GPIO_IOTR0); // 0x088ce000);
-						val &= ~(3 << 8);
-						val |= (2 << 8);
-						writel(val, ADDR_GPIO_IOTR0);
-
-						// GPIO 35 : Ouput
-                        writel(readl(ADDR_SYSCFG_IOCR5)& (~(3 << 10)) , ADDR_SYSCFG_IOCR5);
-						val = readl(ADDR_GPIO_IOTR2);
-						val &= ~(3 << 6);
-						val |= (2 << 6);
-						writel(val, ADDR_GPIO_IOTR2);
-#endif
                         /* IOCR 4*/
                         val = readl(ADDR_SYSCFG_IOCR4);
                         /* Bits 14:12 Cam drive strength */
@@ -2367,6 +2290,15 @@ int board_sysconfig(uint32_t module, uint32_t op)
                         val &= ~(SYSCFG_IOCR6_CAM_MODE(0x3)); /* Clear */
                         val |= (SYSCFG_IOCR6_CAM_MODE(0x3));
                         writel(val, ADDR_SYSCFG_IOCR6);
+                        /* BSC2_CS */
+                        val = readl(ADDR_BSC2_CS);
+                        val |= (1 << 0); // Enable BSC2SCL block 
+                        writel(val, ADDR_BSC2_CS);
+                        /* IOCR 10 */
+                        val = readl(ADDR_SYSCFG_IOCR10);
+                        val |= (3 << 8); // Bits 9:8 11: Enable 1.72KOhm and 2.36KOhm internal pullups in parallel, effective resistance 995Ohm
+                        writel(val, ADDR_SYSCFG_IOCR10);
+
                         printk(KERN_INFO"Board sys Done enable 0x%x\n", readl(ADDR_SYSCFG_IOCR6));
                   } else if(op == SYSCFG_DISABLE) {
 			u32 val;
@@ -2395,6 +2327,14 @@ int board_sysconfig(uint32_t module, uint32_t op)
 			writel(readl(ADDR_SYSCFG_IOCR5) |
 			    SYSCFG_IOCR5_CAM_TRACE_EN
 			    , ADDR_SYSCFG_IOCR5);
+                        /* IOCR 10 */
+                        val = readl(ADDR_SYSCFG_IOCR10);
+                        val &= ~(3 << 8); // Bits 9:8 disable internal pull-up of BSC2
+                        writel(val, ADDR_SYSCFG_IOCR10);
+                        /* BSC2_CS */
+                        val = readl(ADDR_BSC2_CS);
+                        val = 0; // bit0, 6, 7 need set to 0
+                        writel(val, ADDR_BSC2_CS);
                    }
                 break;
 	case SYSCFG_SDHC1:
@@ -2417,10 +2357,12 @@ int board_sysconfig(uint32_t module, uint32_t op)
 			/* SPI_GPIO_MASK = 0x18 */
 			writel((readl(ADDR_SYSCFG_IOCR0) & ~SYSCFG_IOCR0_SD1_MUX(0x3)),
 			       ADDR_SYSCFG_IOCR0);
-#if 0	       
+#if defined(CONFIG_TARGET_LOCALE_AUS_TEL)
+			writel((readl(ADDR_SYSCFG_IOCR0)/* | SYSCFG_IOCR0_GPIO52_GPEN7_MUX*/),	/*sharp.lee for switchable ant*/
+#else
 			writel((readl(ADDR_SYSCFG_IOCR0) | SYSCFG_IOCR0_GPIO52_GPEN7_MUX),
+#endif
 			       ADDR_SYSCFG_IOCR0);
-#endif			       
 
             val = readl(ADDR_SYSCFG_IOCR2);
             val &= ~(SYSCFG_IOCR2_SD1CMD_PULL_CTRL(SD_PULL_DOWN)|SYSCFG_IOCR2_SD1DAT_PULL_CTRL(SD_PULL_DOWN));
@@ -2549,21 +2491,51 @@ int board_sysconfig(uint32_t module, uint32_t op)
 			       | SYSCFG_IOCR2_SD3DAT_PULL_CTRL(SD_PULL_UP),
 			       ADDR_SYSCFG_IOCR2);
 
+#if defined(CONFIG_TARGET_LOCALE_AUS_TEL)				
 			//Set SDIO3 Driving Strength			
-			printk(KERN_INFO "SDIO3 DS is set to 10mA\n");
+			printk("[CONFIG_TARGET_LOCALE_AUS_TEL] SDIO3 DS is set to 12mA\n");
 			val = readl(ADDR_SYSCFG_IOCR4);
 			val &=~(SYSCFG_IOCR4_SD3_DAT_DRV_STGTH(0x7));
 			val &=~(SYSCFG_IOCR4_SD3_CLK_DRV_STGTH(0x7));
-			val |=(SYSCFG_IOCR4_SD3_DAT_DRV_STGTH(0x6)+SYSCFG_IOCR4_SD3_CLK_DRV_STGTH(0x6));
+			val |=(SYSCFG_IOCR4_SD3_DAT_DRV_STGTH(0x7)+SYSCFG_IOCR4_SD3_CLK_DRV_STGTH(0x7));
+#else
+			//Set SDIO3 Driving Strength			
+			printk("SDIO3 DS is set to 6mA\n");
+			val = readl(ADDR_SYSCFG_IOCR4);
+			val &=~(SYSCFG_IOCR4_SD3_DAT_DRV_STGTH(0x7));
+			val &=~(SYSCFG_IOCR4_SD3_CLK_DRV_STGTH(0x7));
+			val |=(SYSCFG_IOCR4_SD3_DAT_DRV_STGTH(0x4)+SYSCFG_IOCR4_SD3_CLK_DRV_STGTH(0x4));
+#endif
 
 			writel(val, ADDR_SYSCFG_IOCR4); 
 
 		} else if (op == SYSCFG_DISABLE) {
 			/* Offset for IOCR2 = 0x0c */
+#if 0		//set no-pull
 			writel(readl(ADDR_SYSCFG_IOCR2) &
 				~(SYSCFG_IOCR2_SD3CMD_PULL_CTRL(SD_PULL_UP | SD_PULL_DOWN) |
 			         SYSCFG_IOCR2_SD3DAT_PULL_CTRL(SD_PULL_UP | SD_PULL_DOWN)),
 			       ADDR_SYSCFG_IOCR2);
+#else		// set pull-down
+			writel(readl(ADDR_SYSCFG_IOCR2)
+				   & ~(SYSCFG_IOCR2_SD3CMD_PULL_CTRL(SD_PULL_UP | SD_PULL_DOWN)),
+				   ADDR_SYSCFG_IOCR2);
+			
+			/* Offset for IOCR2 = 0x0c */
+			writel(readl(ADDR_SYSCFG_IOCR2)
+				   | SYSCFG_IOCR2_SD3CMD_PULL_CTRL(SD_PULL_DOWN),
+				   ADDR_SYSCFG_IOCR2);
+			
+			/* Offset for IOCR2 = 0x0c */
+			writel(readl(ADDR_SYSCFG_IOCR2)
+				   & ~(SYSCFG_IOCR2_SD3DAT_PULL_CTRL(SD_PULL_UP | SD_PULL_DOWN)),
+				   ADDR_SYSCFG_IOCR2);
+			
+			/* Offset for IOCR2 = 0x0c */
+			writel(readl(ADDR_SYSCFG_IOCR2)
+				   | SYSCFG_IOCR2_SD3DAT_PULL_CTRL(SD_PULL_DOWN),
+				   ADDR_SYSCFG_IOCR2);
+#endif
 		}
 		break;
 #ifdef CONFIG_USB_DWC_OTG
@@ -2738,7 +2710,7 @@ int board_sysconfig(uint32_t module, uint32_t op)
 			writel(readl(ADDR_SYSCFG_IOCR0) |
 				SYSCFG_IOCR0_SPI_UARTC_MUX |
 				/*SYSCFG_IOCR0_GPIO52_GPEN7_MUX |*/
-				/*SYSCFG_IOCR0_GPIO53_GPEN8_MUX |*/
+				SYSCFG_IOCR0_GPIO53_GPEN8_MUX |
 				SYSCFG_IOCR0_GPEN9_SPI_GPIO54_L_MUX |
 				SYSCFG_IOCR0_GPIO55_GPEN10_MUX(0x3) |
 				SYSCFG_IOCR0_PCM_SPI2_GPIO4043_MUX(0x02) |
@@ -2767,7 +2739,7 @@ int board_sysconfig(uint32_t module, uint32_t op)
 			/* BIT9 | BIT11 | BIT14 */
 			writel(readl(ADDR_SYSCFG_IOCR5) |
 //			    SYSCFG_IOCR5_GPIO34_UARTA_OUT1N_MUX(0x2) |
-			    SYSCFG_IOCR5_GPIO35_UARTA_OUT2N_MUX(0x2) |
+//			    SYSCFG_IOCR5_GPIO35_UARTA_OUT2N_MUX(0x2) |
 			    SYSCFG_IOCR5_GPIO15L_DRV_STGTH(0x1), ADDR_SYSCFG_IOCR5);
 			/* SD2 DAT[7:4] pulled down */
 			/* BIT21 */
@@ -2850,22 +2822,29 @@ int board_sysconfig(uint32_t module, uint32_t op)
 		else if(op == SYSCFG_DISABLE)
 			writel(~SYSCFG_AHB_PER_CLK_EN, ADDR_SYSCFG_DMAC_AHB_CLK_MODE);
 		break;
+      	case SYSCFG_TOUCH:
+		if (op == SYSCFG_INIT) {
+			/* No Pull GPIO30 */
+			writel(readl(ADDR_GPIO_GPIPEN0) &
+				(0xBFFFFFFF), ADDR_GPIO_GPIPEN0);
+		}
+		break;
 	case SYSCFG_SENSORS:
 		if(op == SYSCFG_ENABLE){
 			writel(readl(IO_ADDRESS(ADDR_SYSCFG_IOCR3_PHYS)) &0x7fffffff  , IO_ADDRESS(ADDR_SYSCFG_IOCR3_PHYS));	//Disable the 3rd BSC on GPIO7, GPIO15
-			writel(readl(HW_GPIO_BASE) & ~(0x3 << (ACC_SDA * 2))  | (0x1 << (ACC_SDA * 2)) , HW_GPIO_BASE);
-			writel(readl(HW_GPIO_BASE) & ~(0x3 << (ACC_SCL * 2))  | (0x1 << (ACC_SCL * 2)) , HW_GPIO_BASE);
-			writel(readl(HW_GPIO_BASE) & ~(0x3 << (GEO_SDA * 2))  | (0x1 << (GEO_SDA * 2)) , HW_GPIO_BASE);
-			writel(readl(HW_GPIO_BASE) & ~(0x3 << (GEO_SCL * 2))  | (0x1 << (GEO_SCL * 2)) , HW_GPIO_BASE);
-			writel(readl(HW_GPIO_BASE+4) & ~(0x3 <<( PROXI_SCL-16)*2 )  | (0x1 << ( PROXI_SCL-16)*2) , HW_GPIO_BASE+4);
-			writel(readl(HW_GPIO_BASE+4) & ~(0x3 <<( PROXI_SDA-16)*2)  | (0x1 << ( PROXI_SDA-16)*2) , HW_GPIO_BASE+4);
+			writel(readl(HW_GPIO_BASE) & ~(0x3 << (ACC_SDA * 2))  | (0x2 << (ACC_SDA * 2)) , HW_GPIO_BASE);
+			writel(readl(HW_GPIO_BASE) & ~(0x3 << (ACC_SCL * 2))  | (0x2 << (ACC_SCL * 2)) , HW_GPIO_BASE);
+			writel(readl(HW_GPIO_BASE) & ~(0x3 << (GEO_SDA * 2))  | (0x2 << (GEO_SDA * 2)) , HW_GPIO_BASE);
+			writel(readl(HW_GPIO_BASE) & ~(0x3 << (GEO_SCL * 2))  | (0x2 << (GEO_SCL * 2)) , HW_GPIO_BASE);
+			writel(readl(HW_GPIO_BASE+4) & ~(0x3 <<( PROXI_SCL-16)*2 )  | (0x2 << ( PROXI_SCL-16)*2) , HW_GPIO_BASE+4);
+			writel(readl(HW_GPIO_BASE+4) & ~(0x3 <<( PROXI_SDA-16)*2)  | (0x2 << ( PROXI_SDA-16)*2) , HW_GPIO_BASE+4);
 
 		        bcm_gpio_pull_up(PROXI_SCL, true);
 		        bcm_gpio_pull_up_down_enable(PROXI_SCL, true);
 
 		        bcm_gpio_pull_up(PROXI_SDA, true);     
-		        bcm_gpio_pull_up_down_enable(PROXI_SDA, true);			
-				
+		        bcm_gpio_pull_up_down_enable(PROXI_SDA, true);
+           
 		}
 		else if (op == SYSCFG_INIT){
 		/*[todo]Interrupt mode config*/
@@ -2965,7 +2944,7 @@ static int __init arch_late_init(void)
 	gpio_direction_input(GPS_CNTIN_CLK_ENABLE);
 	bcm_gpio_pull_up(GPS_CNTIN_CLK_ENABLE, false);
 	bcm_gpio_pull_up_down_enable(GPS_CNTIN_CLK_ENABLE, true);
-	gpio_free(GPS_CNTIN_CLK_ENABLE);
+	gpio_free(GPS_CNTIN_CLK_ENABLE);	
 	#if defined (CONFIG_ANDROID_PMEM)
 		alloc_mem = cam_mempool_base;
 		dma_address = (dma_addr_t) virt_to_phys(alloc_mem);
@@ -2996,7 +2975,8 @@ static void __init update_pm_sysparm(void)
 }
 
 
-static void cooperve_init_gpio(void)
+    
+static void totoro_init_gpio(void)
 {
 /* +++ H/W req */
 #define ADDR_GPIO_GPIPUD0 (HW_GPIO_BASE + 0x028) //0x088CE028 GPIO 0 - 31
@@ -3010,40 +2990,46 @@ static void cooperve_init_gpio(void)
 				/*Set as GPIO*/
 
 				writel(readl(ADDR_SYSCFG_IOCR5)|(1<<24),ADDR_SYSCFG_IOCR5);/*58,59,60*/
-				/* GPIO35_MUX set to GPIO35 */
-//				writel((readl(ADDR_SYSCFG_IOCR5) & SYSCFG_IOCR5_GPIO35_UARTA_OUT2N_MUX(0x00)),ADDR_SYSCFG_IOCR5);
+
 
 				/*Set as input */
-				writel(readl(ADDR_GPIO_IOTR0)&(~(3<<IOTR_GPIO(6))),ADDR_GPIO_IOTR0);
+				writel(readl(ADDR_GPIO_IOTR0)&(~(3<<IOTR_GPIO(3))),ADDR_GPIO_IOTR0);
+				writel(readl(ADDR_GPIO_IOTR0)&(~(3<<IOTR_GPIO(9))),ADDR_GPIO_IOTR0);
+
+				writel(readl(ADDR_GPIO_IOTR2)&(~(3<<IOTR_GPIO(35))),ADDR_GPIO_IOTR2);
 				
-				writel(readl(ADDR_GPIO_IOTR0)&(~(3<<IOTR_GPIO(10))),ADDR_GPIO_IOTR0);
-				writel(readl(ADDR_GPIO_IOTR0)&(~(3<<IOTR_GPIO(11))),ADDR_GPIO_IOTR0);
-				writel(readl(ADDR_GPIO_IOTR0)&(~(3<<IOTR_GPIO(12))),ADDR_GPIO_IOTR0);
-// 				writel(readl(ADDR_GPIO_IOTR2)&(~(3<<IOTR_GPIO(35))),ADDR_GPIO_IOTR2);
- 				writel(readl(ADDR_GPIO_IOTR3)&(~(3<<IOTR_GPIO(58))),ADDR_GPIO_IOTR3);				
+				
+				writel(readl(ADDR_GPIO_IOTR3)&(~(3<<IOTR_GPIO(58))),ADDR_GPIO_IOTR3);				
 				writel(readl(ADDR_GPIO_IOTR3)&(~(3<<IOTR_GPIO(59))),ADDR_GPIO_IOTR3);
 				writel(readl(ADDR_GPIO_IOTR3)&(~(3<<IOTR_GPIO(60))),ADDR_GPIO_IOTR3);
 				
 
 				/*Enable pull up/down*/
+				writel(readl(ADDR_GPIO_GPIPEN0)|GPIPEN_PULL_EN(3),ADDR_GPIO_GPIPEN0);
 				writel(readl(ADDR_GPIO_GPIPEN0)|GPIPEN_PULL_EN(6),ADDR_GPIO_GPIPEN0);
- 				writel(readl(ADDR_GPIO_GPIPEN0)|GPIPEN_PULL_EN(10),ADDR_GPIO_GPIPEN0);
-				writel(readl(ADDR_GPIO_GPIPEN0)|GPIPEN_PULL_EN(11),ADDR_GPIO_GPIPEN0);
-				writel(readl(ADDR_GPIO_GPIPEN0)|GPIPEN_PULL_EN(12),ADDR_GPIO_GPIPEN0);
+				writel(readl(ADDR_GPIO_GPIPEN0)|GPIPEN_PULL_EN(9),ADDR_GPIO_GPIPEN0);
 
-//				writel(readl(ADDR_GPIO_GPIPEN1)|GPIPEN_PULL_EN(35),ADDR_GPIO_GPIPEN1);
+				writel(readl(ADDR_GPIO_GPIPEN1)|GPIPEN_PULL_EN(35),ADDR_GPIO_GPIPEN1);
+
 				writel(readl(ADDR_GPIO_GPIPEN1)|GPIPEN_PULL_EN(58),ADDR_GPIO_GPIPEN1);
 				writel(readl(ADDR_GPIO_GPIPEN1)|GPIPEN_PULL_EN(59),ADDR_GPIO_GPIPEN1);
 				writel(readl(ADDR_GPIO_GPIPEN1)|GPIPEN_PULL_EN(60),ADDR_GPIO_GPIPEN1);
 
 				/*Set as pull down*/
+				writel(readl(ADDR_GPIO_GPIPUD0)&GPIPUD_PULL_DOWN(3),ADDR_GPIO_GPIPUD0);
 				writel(readl(ADDR_GPIO_GPIPUD0)&GPIPUD_PULL_DOWN(6),ADDR_GPIO_GPIPUD0);
- 				writel(readl(ADDR_GPIO_GPIPUD0)&GPIPUD_PULL_DOWN(10),ADDR_GPIO_GPIPUD0);
+				writel(readl(ADDR_GPIO_GPIPUD0)&GPIPUD_PULL_DOWN(9),ADDR_GPIO_GPIPUD0);
+				
+				writel(readl(ADDR_GPIO_GPIPUD0)&GPIPUD_PULL_DOWN(10),ADDR_GPIO_GPIPUD0);
 				writel(readl(ADDR_GPIO_GPIPUD0)&GPIPUD_PULL_DOWN(11),ADDR_GPIO_GPIPUD0);
 				writel(readl(ADDR_GPIO_GPIPUD0)&GPIPUD_PULL_DOWN(12),ADDR_GPIO_GPIPUD0);
-				
-//				writel(readl(ADDR_GPIO_GPIPUD1)&GPIPUD_PULL_DOWN(35),ADDR_GPIO_GPIPUD1);
- 				writel(readl(ADDR_GPIO_GPIPUD1)&GPIPUD_PULL_DOWN(58),ADDR_GPIO_GPIPUD1);
+				writel(readl(ADDR_GPIO_GPIPUD0)&GPIPUD_PULL_DOWN(13),ADDR_GPIO_GPIPUD0);
+				writel(readl(ADDR_GPIO_GPIPUD0)&GPIPUD_PULL_DOWN(22),ADDR_GPIO_GPIPUD0);
+
+
+				writel(readl(ADDR_GPIO_GPIPUD1)&GPIPUD_PULL_DOWN(35),ADDR_GPIO_GPIPUD1);
+
+				writel(readl(ADDR_GPIO_GPIPUD1)&GPIPUD_PULL_DOWN(58),ADDR_GPIO_GPIPUD1);
 				writel(readl(ADDR_GPIO_GPIPUD1)&GPIPUD_PULL_DOWN(59),ADDR_GPIO_GPIPUD1);
 				writel(readl(ADDR_GPIO_GPIPUD1)&GPIPUD_PULL_DOWN(60),ADDR_GPIO_GPIPUD1);
 				
@@ -3052,6 +3038,9 @@ static void cooperve_init_gpio(void)
 	
 
 }
+
+
+
 static void __init bcm21553_init_machine(void)
 {
 	bcm21553_platform_init();
@@ -3059,8 +3048,9 @@ static void __init bcm21553_init_machine(void)
 	athenaray_add_i2c_slaves();
 	athenaray_add_platform_data();
 	platform_add_devices(devices, ARRAY_SIZE(devices));
-	cooperve_init_gpio();
 
+	totoro_init_gpio();
+	
 #ifdef CONFIG_SPI
 	/*Function to register SPI board info : required when spi device is
 	   present */
@@ -3113,7 +3103,7 @@ static int __init ramdump_init(void)
 module_init(ramdump_init);
 
 /* TODO: Replace BCM1160 with BCM21553/AthenaRay once registered */
-MACHINE_START(BCM1160, "GT-S5830I Board")
+MACHINE_START(BCM1160, "GT-S5360 Board")
 	/* Maintainer: Broadcom Corporation */
 	.phys_io = BCM21553_UART_A_BASE,
 	.io_pg_offst = (IO_ADDRESS(BCM21553_UART_A_BASE) >> 18) & 0xfffc,
