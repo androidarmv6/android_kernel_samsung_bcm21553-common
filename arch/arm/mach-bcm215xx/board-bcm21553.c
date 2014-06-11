@@ -160,7 +160,17 @@
  */
 #define GPT_AVAIL_BITMAP         0x3F
 
-#if defined(CONFIG_BOARD_TOTORO)
+#if defined(CONFIG_BOARD_TASSVE)
+#define BATT_FULL_VOLT		4200
+#define BATT_LEVEL5_VOLT	3960
+#define BATT_LEVEL4_VOLT	3890
+#define BATT_LEVEL3_VOLT	3800
+#define BATT_LEVEL2_VOLT	3730
+#define BATT_LEVEL1_VOLT	3710
+#define BATT_LEVEL0_VOLT	3570
+#define BATT_LEVEL0_1_VOLT	3500
+#define BATT_LOW_VOLT		3400
+#elif defined(CONFIG_BOARD_TOTORO)
 #define BATT_FULL_VOLT		4200
 #define BATT_LEVEL5_VOLT	3950
 #define BATT_LEVEL4_VOLT	3860
@@ -183,9 +193,18 @@
 #endif
 
 extern int pmu_is_charger_inserted();
+
 #define KEY_PRESS_THRESHOLD	0x6d00
+#if defined(CONFIG_BOARD_TASSVE)
+#define KEY_3POLE_THRESHOLD	56	// ~ 55 and 57 ~, measured on Totoro
+#define KEY1_THRESHOLD_L	4	// 9 to 83, mesaured on Luisa
+#define KEY1_THRESHOLD_U	100
+#define KEY2_THRESHOLD_L	100	// 117 to 183, mesaured on Luisa
+#define KEY2_THRESHOLD_U	220
+#define KEY3_THRESHOLD_L	220	// 202 to 314, mesaured on Luisa
+#define KEY3_THRESHOLD_U	692
+#elif defined(CONFIG_BOARD_TOTORO)
 #define KEY_3POLE_THRESHOLD	670	// ~ 55 and 57 ~, measured on Totoro
-#if defined(CONFIG_BOARD_TOTORO)
 #define KEY1_THRESHOLD_L	0	// 9 to 83, mesaured on Luisa
 #define KEY1_THRESHOLD_U	104
 #define KEY2_THRESHOLD_L	104	// 117 to 183, mesaured on Luisa
@@ -193,6 +212,7 @@ extern int pmu_is_charger_inserted();
 #define KEY3_THRESHOLD_L	220	// 202 to 314, mesaured on Luisa
 #define KEY3_THRESHOLD_U	478
 #elif defined(CONFIG_BOARD_COOPERVE)
+#define KEY_3POLE_THRESHOLD	670	// ~ 55 and 57 ~, measured on Totoro
 #define KEY1_THRESHOLD_L	16	// 9 to 83, mesaured on Luisa
 #define KEY1_THRESHOLD_U	115
 #define KEY2_THRESHOLD_L	115	// 117 to 183, mesaured on Luisa
@@ -588,9 +608,9 @@ static void bcm_keypad_config_iocr(int row, int col)
 #if defined(CONFIG_TOUCHSCREEN_MMS128_REV04) || defined(CONFIG_TOUCHSCREEN_MMS128) ||  defined(CONFIG_TOUCHSCREEN_F760) || defined(CONFIG_TOUCHSCREEN_MMS128_TASSCOOPER) || defined(CONFIG_TOUCHSCREEN_TMA340_COOPERVE)
 static struct bcm_keymap newKeymap[] = {
 	{BCM_KEY_ROW_0, BCM_KEY_COL_0, "Volume Up", KEY_VOLUMEUP},
-#if defined(CONFIG_BOARD_TOTORO)
+#if defined(CONFIG_BOARD_TASSVE) || defined(CONFIG_BOARD_TOTORO)
 	{BCM_KEY_ROW_0, BCM_KEY_COL_1, "unused", 0},
-#elif defined(CONFIG_MACH_COOOPERVE)
+#elif defined(CONFIG_BOARD_COOOPERVE)
 	{BCM_KEY_ROW_0, BCM_KEY_COL_1, "Volume Down", KEY_VOLUMEDOWN},
 #endif
 	{BCM_KEY_ROW_0, BCM_KEY_COL_2, "unused", 0},
@@ -599,7 +619,7 @@ static struct bcm_keymap newKeymap[] = {
 	{BCM_KEY_ROW_0, BCM_KEY_COL_5, "unused", 0},
 	{BCM_KEY_ROW_0, BCM_KEY_COL_6, "unused", 0},
 	{BCM_KEY_ROW_0, BCM_KEY_COL_7, "unused", 0},
-#if defined(CONFIG_BOARD_TOTORO)
+#if defined(CONFIG_BOARD_TASSVE) || defined(CONFIG_BOARD_TOTORO)
 	{BCM_KEY_ROW_1, BCM_KEY_COL_0, "Volume Down", KEY_VOLUMEDOWN},
 #elif defined(CONFIG_BOARD_COOPERVE)
 	{BCM_KEY_ROW_1, BCM_KEY_COL_0, "key home", KEY_HOME},
@@ -611,7 +631,7 @@ static struct bcm_keymap newKeymap[] = {
 	{BCM_KEY_ROW_1, BCM_KEY_COL_5, "unused", 0},
 	{BCM_KEY_ROW_1, BCM_KEY_COL_6, "unused", 0},
 	{BCM_KEY_ROW_1, BCM_KEY_COL_7, "unused", 0},
-#if defined(CONFIG_BOARD_TOTORO)
+#if defined(CONFIG_BOARD_TASSVE) || defined(CONFIG_BOARD_TOTORO)
 	{BCM_KEY_ROW_2, BCM_KEY_COL_0, "key home", KEY_HOME},
 	{BCM_KEY_ROW_2, BCM_KEY_COL_1, "key menu", KEY_MENU},
 #elif defined(CONFIG_BOARD_COOPERVE)
@@ -625,7 +645,7 @@ static struct bcm_keymap newKeymap[] = {
 	{BCM_KEY_ROW_2, BCM_KEY_COL_6, "unused", 0},
 	{BCM_KEY_ROW_2, BCM_KEY_COL_7, "unused", 0},
 	{BCM_KEY_ROW_3, BCM_KEY_COL_0, "unused", 0},
-#if defined(CONFIG_BOARD_TOTORO)
+#if defined(CONFIG_BOARD_TASSVE) || defined(CONFIG_BOARD_TOTORO)
 	{BCM_KEY_ROW_3, BCM_KEY_COL_1, "key back", KEY_BACK},
 #elif defined(CONFIG_BOARD_COOPERVE)
 	{BCM_KEY_ROW_3, BCM_KEY_COL_1, "unused", 0},
@@ -671,7 +691,7 @@ static struct bcm_keymap newKeymap[] = {
 };
 #endif
 
-#ifdef CONFIG_TOUCHSCREEN_TMA340
+#if defined(CONFIG_TOUCHSCREEN_TMA340) && !defined(CONFIG_BOARD_TASSVE)
 static struct bcm_keymap newKeymap[] = {
 	{BCM_KEY_ROW_0, BCM_KEY_COL_0, "Volume Up", KEY_VOLUMEUP},
 	{BCM_KEY_ROW_0, BCM_KEY_COL_1, "unused", 0},
@@ -741,7 +761,10 @@ static struct bcm_keymap newKeymap[] = {
 #endif
 
 static struct bcm_keypad_platform_info bcm215xx_keypad_data = {
-#if defined(CONFIG_BOARD_TOTORO)
+#if defined(CONFIG_BOARD_TASSVE)
+	.row_num = 4,
+	.col_num = 2,
+#elif defined(CONFIG_BOARD_TOTORO)
 	.row_num = 3,
 	.col_num = 1,
 #elif defined(CONFIG_BOARD_COOPERVE)
@@ -759,7 +782,11 @@ static struct bcm_keypad_platform_info bcm215xx_keypad_data = {
 struct platform_device bcm_test_vibrator_devices = {
 	.name = "vibrator", 
 	.id = 0,
+#if defined(CONFIG_BOARD_TASSVE)
+	.voltage = 3000000,
+#elif defined(CONFIG_BOARD_COOPERVE) || defined(CONFIG_BOARD_TOTORO)
 	.voltage = 3300000,
+#endif
 };
 #ifdef CONFIG_BACKLIGHT_AAT1401
 struct platform_device bcm_aat1401_backlight_devices = {
@@ -818,7 +845,19 @@ static struct platform_device android_pmem_device = {
 };
 #endif
 
-#if defined (CONFIG_BRCM_HAL_CAM) && defined (CONFIG_BOARD_TOTORO)
+#if defined(CONFIG_BRCM_HAL_CAM)
+#if defined(CONFIG_BOARD_TASSVE)
+struct i2c_slave_platform_data totoro_cam_pdata = {
+        .i2c_spd = I2C_SPD_400K,
+};
+
+static struct i2c_board_info __initdata bcm21553_cam_i2c_board_info[] = {
+        {I2C_BOARD_INFO("cami2c", (0x5A >> 1)),
+         .platform_data = (void *)&totoro_cam_pdata,
+         .irq = IRQ_CAM_CCP2, 
+         },
+};
+#elif defined(CONFIG_BOARD_TOTORO)
 struct i2c_slave_platform_data totoro_cam_pdata = {
         .i2c_spd = I2C_SPD_400K,
 };
@@ -829,7 +868,7 @@ static struct i2c_board_info __initdata bcm21553_cam_i2c_board_info[] = {
          .irq = IRQ_CAM_CCP2, 
          },
 };
-#elif defined (CONFIG_BRCM_HAL_CAM) && defined (CONFIG_BOARD_COOPERVE)
+#elif defined(CONFIG_BOARD_COOPERVE)
 struct i2c_slave_platform_data cooperve_cam_pdata = {
         .i2c_spd = I2C_SPD_400K,
 };
@@ -840,6 +879,7 @@ static struct i2c_board_info __initdata bcm21553_cam_i2c_board_info[] = {
          .irq = IRQ_CAM_CCP2, 
          },
 };
+#endif
 #endif
 
 #if defined (CONFIG_INPUT_BMA150_SMB380)
@@ -976,8 +1016,12 @@ static struct regulator_init_data dldo3_init_data = {
 
 static struct regulator_init_data dldo4_init_data = {
 	.constraints = {
+#if defined(CONFIG_BOARD_TASSVE)
+		.min_uV = 1200000,	//Camera voltage source for "S5k5CCGX" is 1.2V.
+#elif defined(CONFIG_BOARD_COOPERVE) || defined(CONFIG_BOARD_TOTORO)
 		.min_uV = 1800000,
-#if defined(CONFIG_BOARD_TOTORO)
+#endif
+#if defined(CONFIG_BOARD_TASSVE) || defined(CONFIG_BOARD_TOTORO)
 		.max_uV = 1800000,
 #elif defined(CONFIG_BOARD_COOPERVE)
 		.max_uV = 3000000,
@@ -995,7 +1039,7 @@ static struct regulator_init_data dldo4_init_data = {
 static struct regulator_consumer_supply hcldo1_consumers[] = {
 	{
 		.dev = NULL,
-#if defined(CONFIG_BOARD_TOTORO)
+#if defined(CONFIG_BOARD_TASSVE) || defined(CONFIG_BOARD_TOTORO)
 		.supply = "prox_vcc",
 #elif defined(CONFIG_BOARD_COOPERVE)
 		.supply = "touch_keyled",
@@ -1211,7 +1255,7 @@ static struct max8986_regl_init_data bcm21553_regulators[] = {
 	},
 	{
 		.regl_id = MAX8986_REGL_HCLDO1,
-#if defined(CONFIG_BOARD_TOTORO)
+#if defined(CONFIG_BOARD_TASSVE) || defined(CONFIG_BOARD_TOTORO)
 		.dsm_opmode = MAX8986_REGL_ON_IN_DSM,
 #elif defined(CONFIG_BOARD_COOPERVE)
 		.dsm_opmode = MAX8986_REGL_OFF_IN_DSM,
@@ -1247,13 +1291,16 @@ static struct max8986_regl_pdata regl_pdata = {
 		[MAX8986_REGL_ALDO5]	= 0x01,
 		[MAX8986_REGL_ALDO6]	= 0x11,
 		[MAX8986_REGL_ALDO7]	= 0x11,
-#if defined(CONFIG_BOARD_TOTORO)
+#if defined(CONFIG_BOARD_TASSVE) || defined(CONFIG_BOARD_TOTORO)
 		[MAX8986_REGL_ALDO8]	= 0x22,
 		[MAX8986_REGL_ALDO9]	= 0x22,
-		[MAX8986_REGL_DLDO1]	= 0x00,
 #elif defined(CONFIG_BOARD_COOPERVE)
 		[MAX8986_REGL_ALDO8]	= 0x00,
 		[MAX8986_REGL_ALDO9]	= 0xAA,
+#endif
+#if defined(CONFIG_BOARD_TOTORO)
+		[MAX8986_REGL_DLDO1]	= 0x00,
+#elif defined(CONFIG_BOARD_COOPERVE) || defined(CONFIG_BOARD_TASSVE)
 		[MAX8986_REGL_DLDO1]	= 0x11,
 #endif
 		[MAX8986_REGL_DLDO2]	= 0x55,
@@ -1288,7 +1335,7 @@ static struct max8986_audio_pdata audio_pdata = {
 
 static struct max8986_power_pdata power_pdata = {
 	.usb_charging_cc = MAX8986_CHARGING_CURR_450MA,
-#if defined(CONFIG_BOARD_TOTORO)
+#if defined(CONFIG_BOARD_TASSVE) || defined(CONFIG_BOARD_TOTORO)
 	.wac_charging_cc = MAX8986_CHARGING_CURR_450MA,
 #elif defined(CONFIG_BOARD_COOPERVE)
 	.wac_charging_cc = MAX8986_CHARGING_CURR_550MA,
@@ -1521,7 +1568,7 @@ static u32 pmu_event_callback(int event, int param)
 //	static u16 bat_adc[] = {0x2BE, 0x2D3, 0x2E8, 0x2FC, 0x311, 0x32C, 0x364};
 #if defined(CONFIG_BOARD_TOTORO) && defined(CONFIG_TARGET_LOCALE_AUS_TEL)
 	static u32 TempAdcTable[] = {     775,721,664,602,541,479,420,366,315,270,230,196,166,141,119,100,93,88,}; 
-#elif defined(CONFIG_BOARD_TOTORO)
+#elif defined(CONFIG_BOARD_TASSVE) || defined(CONFIG_BOARD_TOTORO)
 	static u32 TempAdcTable[] = {     786,732,674,612,550,488,428,373,322,276,236,201,171,145,123,104,97,91,}; 
 #elif defined(CONFIG_BOARD_COOPERVE)
 	static u32 TempAdcTable[] = {     794,738,679,618,554,493,432,375,324,279,242,205,176,147,126,112,105,98,};
@@ -1552,6 +1599,7 @@ static u32 pmu_event_callback(int event, int param)
 	}
 #endif
 
+#if defined(CONFIG_BOARD_COOPERVE) || defined(CONFIG_BOARD_TOTORO)
 	if(SYSPARM_GetDefault4p2VoltReading())	
 //		Default4p2Volt = SYSPARM_GetDefault4p2VoltReading();
 		Default4p2Volt = 0x364;
@@ -1563,6 +1611,19 @@ static u32 pmu_event_callback(int event, int param)
 		BattEmptyThresh = 0x2BF;
 	else
 		BattEmptyThresh = 0x2BF;
+#elif defined(CONFIG_BOARD_TASSVE)
+	if(SYSPARM_GetDefault4p2VoltReading())	
+//		Default4p2Volt = SYSPARM_GetDefault4p2VoltReading();
+		Default4p2Volt = 0x35F;
+	else
+		Default4p2Volt = 0x35F;
+
+	if(SYSPARM_GetBattEmptyThresh())
+//		BattEmptyThresh = SYSPARM_GetBattEmptyThresh();
+		BattEmptyThresh = 0x2B9;
+	else
+		BattEmptyThresh = 0x2B9;
+#endif
 	
 	printk(KERN_INFO"Default4p2Volt 0x%x\n", Default4p2Volt);
 	printk(KERN_INFO"BattEmptyThresh3P4V 0x%x\n", BattEmptyThresh);
@@ -1660,7 +1721,7 @@ static void max8986_sysparms(struct max8986 *max8986)
 	max8986_load_sysparm(PMU_REG_0x3F_PM_ADISCHARG2,
 			     MAX8986_PM_REG_ADISCHARGE2, max8986);
 
-#if defined(CONFIG_BOARD_TOTORO)				 
+#if defined(CONFIG_BOARD_TASSVE) || defined(CONFIG_BOARD_TOTORO)
 	max8986->write_dev(max8986, MAX8986_PM_REG_ADISCHARGE1, 0x0E);
 #endif
 }
@@ -1731,7 +1792,7 @@ static struct qt602240_platform_data qt602240_platform_data = {
 
 #endif
 
-#if defined(CONFIG_SENSORS_BMA222) || defined(CONFIG_INPUT_YAS_ACCELEROMETER) //xxx
+#if defined(CONFIG_SENSORS_BMA222) || defined(CONFIG_INPUT_YAS_ACCELEROMETER)
 #define ACC_SDA 15
 #define ACC_SCL 7
 
@@ -1853,13 +1914,12 @@ module_init(sensors_init);
 #define TSP_SDA 27
 #define TSP_SCL 26
 
-
 #if defined(CONFIG_I2C_GPIO)
 static struct i2c_gpio_platform_data touch_i2c_gpio_data = {
         .sda_pin    = TSP_SDA,
         .scl_pin    = TSP_SCL,
         .udelay  = 3,  //// brian :3
-#if defined(CONFIG_BOARD_TOTORO)
+#if defined(CONFIG_BOARD_TASSVE) || defined(CONFIG_BOARD_TOTORO)
         .timeout = 20,
 #elif defined(CONFIG_BOARD_COOPERVE)
         .timeout = 100,
@@ -1958,6 +2018,15 @@ static struct i2c_board_info __initdata athenaray_i2c2_board_info[] = {
 #endif
 };
 
+static struct i2c_board_info __initdata athenaray_i2c3_board_info[] = {
+#ifdef CONFIG_TOUCHSCREEN_QT602240
+	{
+				I2C_BOARD_INFO("qt602240_ts", 0x4b),
+				.platform_data = &qt602240_platform_data,
+				.irq = GPIO_TO_IRQ(PEN_IRQ_GPIO),
+	 },
+#endif
+};
 
 static struct i2c_board_info __initdata athenaray_i2cgpio1_board_info[] = {
 #if defined  (CONFIG_SENSORS_BMA222)
@@ -2017,15 +2086,15 @@ static void athenaray_add_i2c_slaves(void)
 	i2c_register_board_info(0x3, athenaray_i2cgpio0_board_info,
 				ARRAY_SIZE(athenaray_i2cgpio0_board_info));
 
-#if defined (CONFIG_SENSORS_BMA222) || defined (CONFIG_INPUT_YAS_ACCELEROMETER) //xxx
+#if defined (CONFIG_SENSORS_BMA222) || defined (CONFIG_INPUT_YAS_ACCELEROMETER)
 	i2c_register_board_info(0x4, athenaray_i2cgpio1_board_info,
 				ARRAY_SIZE(athenaray_i2cgpio1_board_info));
 #endif
-#if defined (CONFIG_SENSORS_GP2A) || defined (CONFIG_SENSORS_TAOS) //xxx
+#if defined (CONFIG_SENSORS_GP2A) || defined (CONFIG_SENSORS_TAOS)
 	i2c_register_board_info(0x5, athenaray_i2cgpio2_board_info,
 				ARRAY_SIZE(athenaray_i2cgpio2_board_info));
 #endif
-#if defined (CONFIG_SENSORS_MMC328X) || defined (CONFIG_INPUT_YAS_MAGNETOMETER) //xxx
+#if defined (CONFIG_SENSORS_MMC328X)
 	i2c_register_board_info(0x6, athenaray_i2cgpio3_board_info,
 				ARRAY_SIZE(athenaray_i2cgpio3_board_info));
 #endif
@@ -2149,7 +2218,9 @@ static struct android_usb_platform_data android_usb_pdata = {
 	.product_id = 0x0005,
 	.adb_product_id = 0x0002,
 	.version = 0x0100,
-#if defined(CONFIG_BOARD_TOTORO)
+#if defined(CONFIG_BOARD_TASSVE)
+	.product_name = "GT-S5570I",
+#elif defined(CONFIG_BOARD_TOTORO)
 	.product_name = "GT-S5360",
 #elif defined(CONFIG_BOARD_COOPERVE)
 	.product_name = "GT-S5830I",
@@ -2227,7 +2298,10 @@ static struct platform_device *devices[] __initdata = {
 #if defined(CONFIG_I2C_GPIO)
 	&touch_i2c_gpio_device,
 	&bma222_i2c_gpio_device,
-#if defined(CONFIG_BOARD_TOTORO)
+#if defined(CONFIG_BOARD_TASSVE)
+	&taos_i2c_gpio_device,
+	&mmc328x_i2c_gpio_device,
+#elif defined(CONFIG_BOARD_TOTORO)
 	&gp2a_i2c_gpio_device,
 	&mmc328x_i2c_gpio_device,
 #elif defined(CONFIG_BOARD_COOPERVE)
@@ -2389,7 +2463,7 @@ int board_sysconfig(uint32_t module, uint32_t op)
                         u32 val;
                         /* IOCR 0 */
                         val = readl(ADDR_SYSCFG_IOCR0) & ~(SYSCFG_IOCR0_CAMCK_GPIO_MUX);
-#if defined(CONFIG_BOARD_TOTORO)
+#if defined(CONFIG_BOARD_TASSVE) || defined(CONFIG_BOARD_TOTORO)
                         writel(val, ADDR_SYSCFG_IOCR0);
 #elif defined(CONFIG_BOARD_COOPERVE)
 						// for camera flash by ksh0807.kim
@@ -2425,7 +2499,7 @@ int board_sysconfig(uint32_t module, uint32_t op)
                         /* Bits 14:12 */
                         val |= SYSCFG_IOCR4_CAM_DRV_STGTH(0x7);
                         writel(val, ADDR_SYSCFG_IOCR4);
-#if defined(CONFIG_BOARD_TOTORO)
+#if defined(CONFIG_BOARD_TASSVE) || defined(CONFIG_BOARD_TOTORO)
                         /* IOCR 10 */
                         val = readl(ADDR_SYSCFG_IOCR10);
                         val &= ~(3 << 8); // Bits 9:8 disable internal pull-up of BSC2
@@ -2436,8 +2510,13 @@ int board_sysconfig(uint32_t module, uint32_t op)
                         writel(val, ADDR_BSC2_CS);
                         /* IOCR 5 for trace muxing */
                         val = readl(ADDR_SYSCFG_IOCR5);
+#if defined(CONFIG_BOARD_TASSVE)
+                        val &= ~(SYSCFG_IOCR5_CAM_TRACE_EN);
+#elif defined(CONFIG_BOARD_TOTORO)
                         val |= SYSCFG_IOCR5_CAM_TRACE_EN;
+#endif
                         writel(val, ADDR_SYSCFG_IOCR5);
+#if defined(CONFIG_BOARD_TOTORO)
                         val = readl(ADDR_SYSCFG_IOCR1);
                         val &= ~(1<<4);
                         writel(val, ADDR_SYSCFG_IOCR1);  //set gpio
@@ -2450,6 +2529,7 @@ int board_sysconfig(uint32_t module, uint32_t op)
                         val = readl(ADDR_GPIO_GPOR0);
                         val &= ~(1<<4);//set register
                         writel(val, ADDR_GPIO_GPOR0);  //set gpio value
+#endif
 #endif
                   } else if(op == SYSCFG_ENABLE){
                         u32 val;
@@ -2494,14 +2574,18 @@ int board_sysconfig(uint32_t module, uint32_t op)
                         val &= ~(SYSCFG_IOCR6_CAM_MODE(0x3)); /* Clear */
                         val |= (SYSCFG_IOCR6_CAM_MODE(0x3));
                         writel(val, ADDR_SYSCFG_IOCR6);
-#if defined(CONFIG_BOARD_TOTORO)
+#if defined(CONFIG_BOARD_TASSVE) || defined(CONFIG_BOARD_TOTORO)
                         /* BSC2_CS */
                         val = readl(ADDR_BSC2_CS);
                         val |= (1 << 0); // Enable BSC2SCL block 
                         writel(val, ADDR_BSC2_CS);
                         /* IOCR 10 */
                         val = readl(ADDR_SYSCFG_IOCR10);
+#if defined(CONFIG_BOARD_TASSVE)
+                        val |= (1 << 8); // Bits 9:8 11: Enable 1.72KOhm and 2.36KOhm internal pullups in parallel, effective resistance 995Ohm
+#elif defined(CONFIG_BOARD_TOTORO)
                         val |= (3 << 8); // Bits 9:8 11: Enable 1.72KOhm and 2.36KOhm internal pullups in parallel, effective resistance 995Ohm
+#endif
                         writel(val, ADDR_SYSCFG_IOCR10);
 #endif
                         printk(KERN_INFO"Board sys Done enable 0x%x\n", readl(ADDR_SYSCFG_IOCR6));
@@ -2532,7 +2616,7 @@ int board_sysconfig(uint32_t module, uint32_t op)
 			writel(readl(ADDR_SYSCFG_IOCR5) |
 			    SYSCFG_IOCR5_CAM_TRACE_EN
 			    , ADDR_SYSCFG_IOCR5);
-#if defined(CONFIG_BOARD_TOTORO)
+#if defined(CONFIG_BOARD_TASSVE) || defined(CONFIG_BOARD_TOTORO)
                         /* IOCR 10 */
                         val = readl(ADDR_SYSCFG_IOCR10);
                         val &= ~(3 << 8); // Bits 9:8 disable internal pull-up of BSC2
@@ -2567,7 +2651,7 @@ int board_sysconfig(uint32_t module, uint32_t op)
 #if defined(CONFIG_BOARD_TOTORO) && defined(CONFIG_TARGET_LOCALE_AUS_TEL)
 			writel((readl(ADDR_SYSCFG_IOCR0)/* | SYSCFG_IOCR0_GPIO52_GPEN7_MUX*/),	/*sharp.lee for switchable ant*/
 			       ADDR_SYSCFG_IOCR0);
-#elif defined(CONFIG_BOARD_TOTORO)
+#elif defined(CONFIG_BOARD_TASSVE) || defined(CONFIG_BOARD_TOTORO)
 			writel((readl(ADDR_SYSCFG_IOCR0) | SYSCFG_IOCR0_GPIO52_GPEN7_MUX),
 			       ADDR_SYSCFG_IOCR0);
 #endif
@@ -2706,7 +2790,7 @@ int board_sysconfig(uint32_t module, uint32_t op)
 			val &=~(SYSCFG_IOCR4_SD3_DAT_DRV_STGTH(0x7));
 			val &=~(SYSCFG_IOCR4_SD3_CLK_DRV_STGTH(0x7));
 			val |=(SYSCFG_IOCR4_SD3_DAT_DRV_STGTH(0x7)+SYSCFG_IOCR4_SD3_CLK_DRV_STGTH(0x7));
-#elif defined(CONFIG_BOARD_TOTORO)
+#elif defined(CONFIG_BOARD_TASSVE) || defined(CONFIG_BOARD_TOTORO)
 			//Set SDIO3 Driving Strength			
 			printk("SDIO3 DS is set to 6mA\n");
 			val = readl(ADDR_SYSCFG_IOCR4);
@@ -2729,7 +2813,7 @@ int board_sysconfig(uint32_t module, uint32_t op)
 				~(SYSCFG_IOCR2_SD3CMD_PULL_CTRL(SD_PULL_UP | SD_PULL_DOWN) |
 			         SYSCFG_IOCR2_SD3DAT_PULL_CTRL(SD_PULL_UP | SD_PULL_DOWN)),
 			       ADDR_SYSCFG_IOCR2);
-#elif defined(CONFIG_BOARD_TOTORO) // set pull-down
+#elif defined(CONFIG_BOARD_TASSVE) || defined(CONFIG_BOARD_TOTORO) // set pull-down
 			writel(readl(ADDR_SYSCFG_IOCR2)
 				   & ~(SYSCFG_IOCR2_SD3CMD_PULL_CTRL(SD_PULL_UP | SD_PULL_DOWN)),
 				   ADDR_SYSCFG_IOCR2);
@@ -2923,7 +3007,7 @@ int board_sysconfig(uint32_t module, uint32_t op)
 			writel(readl(ADDR_SYSCFG_IOCR0) |
 				SYSCFG_IOCR0_SPI_UARTC_MUX |
 				/*SYSCFG_IOCR0_GPIO52_GPEN7_MUX |*/
-#if defined(CONFIG_BOARD_TOTORO)
+#if defined(CONFIG_BOARD_TASSVE) || defined(CONFIG_BOARD_TOTORO)
 				SYSCFG_IOCR0_GPIO53_GPEN8_MUX |
 #endif
 				SYSCFG_IOCR0_GPEN9_SPI_GPIO54_L_MUX |
@@ -3051,7 +3135,7 @@ int board_sysconfig(uint32_t module, uint32_t op)
 	case SYSCFG_SENSORS:
 		if(op == SYSCFG_ENABLE){
 			writel(readl(IO_ADDRESS(ADDR_SYSCFG_IOCR3_PHYS)) &0x7fffffff  , IO_ADDRESS(ADDR_SYSCFG_IOCR3_PHYS));	//Disable the 3rd BSC on GPIO7, GPIO15
-#if defined(CONFIG_BOARD_TOTORO)
+#if defined(CONFIG_BOARD_TASSVE) || defined(CONFIG_BOARD_TOTORO)
 			writel(readl(HW_GPIO_BASE) & ~(0x3 << (ACC_SDA * 2))  | (0x2 << (ACC_SDA * 2)) , HW_GPIO_BASE);
 			writel(readl(HW_GPIO_BASE) & ~(0x3 << (ACC_SCL * 2))  | (0x2 << (ACC_SCL * 2)) , HW_GPIO_BASE);
 			writel(readl(HW_GPIO_BASE) & ~(0x3 << (GEO_SDA * 2))  | (0x2 << (GEO_SDA * 2)) , HW_GPIO_BASE);
@@ -3202,8 +3286,64 @@ static void __init update_pm_sysparm(void)
 #endif
 }
 
+#if defined(CONFIG_BOARD_TASSVE)
+static void tassve_init_gpio(void)
+{
+/* +++ H/W req */
+#define ADDR_GPIO_GPIPUD0 (HW_GPIO_BASE + 0x028) //0x088CE028 GPIO 0 - 31
+#define ADDR_GPIO_GPIPUD1 (HW_GPIO_BASE + 0x02c) //0x088CE02C GPIO 32 - 63
 
-#if defined(CONFIG_BOARD_TOTORO)
+#define IOTR_GPIO(GPIO) (~(3<<((GPIO%16)<<1)))
+#define GPIPEN_PULL_EN(GPIO) (1<<(GPIO%32))
+#define GPIPUD_PULL_DOWN(GPIO) (~(1<<(GPIO%32)))
+
+
+				/*Set as GPIO*/
+
+				writel(readl(ADDR_SYSCFG_IOCR5)|(1<<24),ADDR_SYSCFG_IOCR5);/*58,59,60*/
+				/* GPIO35_MUX set to GPIO35 */
+//				writel((readl(ADDR_SYSCFG_IOCR5) & SYSCFG_IOCR5_GPIO35_UARTA_OUT2N_MUX(0x00)),ADDR_SYSCFG_IOCR5);
+
+				/*Set as input */
+				writel(readl(ADDR_GPIO_IOTR0)&(~(3<<IOTR_GPIO(6))),ADDR_GPIO_IOTR0);
+				
+				writel(readl(ADDR_GPIO_IOTR0)&(~(3<<IOTR_GPIO(10))),ADDR_GPIO_IOTR0);
+				writel(readl(ADDR_GPIO_IOTR0)&(~(3<<IOTR_GPIO(11))),ADDR_GPIO_IOTR0);
+				writel(readl(ADDR_GPIO_IOTR0)&(~(3<<IOTR_GPIO(12))),ADDR_GPIO_IOTR0);
+ 				writel(readl(ADDR_GPIO_IOTR2)&(~(3<<IOTR_GPIO(35))),ADDR_GPIO_IOTR2);
+ 				writel(readl(ADDR_GPIO_IOTR3)&(~(3<<IOTR_GPIO(58))),ADDR_GPIO_IOTR3);				
+				writel(readl(ADDR_GPIO_IOTR3)&(~(3<<IOTR_GPIO(59))),ADDR_GPIO_IOTR3);
+				writel(readl(ADDR_GPIO_IOTR3)&(~(3<<IOTR_GPIO(60))),ADDR_GPIO_IOTR3);
+				
+
+				/*Enable pull up/down*/
+				writel(readl(ADDR_GPIO_GPIPEN0)|GPIPEN_PULL_EN(6),ADDR_GPIO_GPIPEN0);
+ 				writel(readl(ADDR_GPIO_GPIPEN0)|GPIPEN_PULL_EN(10),ADDR_GPIO_GPIPEN0);
+				writel(readl(ADDR_GPIO_GPIPEN0)|GPIPEN_PULL_EN(11),ADDR_GPIO_GPIPEN0);
+				writel(readl(ADDR_GPIO_GPIPEN0)|GPIPEN_PULL_EN(12),ADDR_GPIO_GPIPEN0);
+
+				writel(readl(ADDR_GPIO_GPIPEN1)|GPIPEN_PULL_EN(35),ADDR_GPIO_GPIPEN1);
+				writel(readl(ADDR_GPIO_GPIPEN1)|GPIPEN_PULL_EN(58),ADDR_GPIO_GPIPEN1);
+				writel(readl(ADDR_GPIO_GPIPEN1)|GPIPEN_PULL_EN(59),ADDR_GPIO_GPIPEN1);
+				writel(readl(ADDR_GPIO_GPIPEN1)|GPIPEN_PULL_EN(60),ADDR_GPIO_GPIPEN1);
+
+				/*Set as pull down*/
+				writel(readl(ADDR_GPIO_GPIPUD0)&GPIPUD_PULL_DOWN(6),ADDR_GPIO_GPIPUD0);
+ 				writel(readl(ADDR_GPIO_GPIPUD0)&GPIPUD_PULL_DOWN(10),ADDR_GPIO_GPIPUD0);
+				writel(readl(ADDR_GPIO_GPIPUD0)&GPIPUD_PULL_DOWN(11),ADDR_GPIO_GPIPUD0);
+				writel(readl(ADDR_GPIO_GPIPUD0)&GPIPUD_PULL_DOWN(12),ADDR_GPIO_GPIPUD0);
+				
+				writel(readl(ADDR_GPIO_GPIPUD1)&GPIPUD_PULL_DOWN(35),ADDR_GPIO_GPIPUD1);
+ 				writel(readl(ADDR_GPIO_GPIPUD1)&GPIPUD_PULL_DOWN(58),ADDR_GPIO_GPIPUD1);
+				writel(readl(ADDR_GPIO_GPIPUD1)&GPIPUD_PULL_DOWN(59),ADDR_GPIO_GPIPUD1);
+				writel(readl(ADDR_GPIO_GPIPUD1)&GPIPUD_PULL_DOWN(60),ADDR_GPIO_GPIPUD1);
+				
+/* --- H/W req */
+
+	
+
+}
+#elif defined(CONFIG_BOARD_TOTORO)
 static void totoro_init_gpio(void)
 {
 /* +++ H/W req */
@@ -3332,7 +3472,9 @@ static void __init bcm21553_init_machine(void)
 	athenaray_add_i2c_slaves();
 	athenaray_add_platform_data();
 	platform_add_devices(devices, ARRAY_SIZE(devices));
-#if defined(CONFIG_BOARD_TOTORO)
+#if defined(CONFIG_BOARD_TASSVE)
+	tassve_init_gpio();
+#elif defined(CONFIG_BOARD_TOTORO)
 	totoro_init_gpio();
 #elif defined(CONFIG_BOARD_COOPERVE)
 	cooperve_init_gpio();
@@ -3390,7 +3532,9 @@ static int __init ramdump_init(void)
 module_init(ramdump_init);
 
 /* TODO: Replace BCM1160 with BCM21553/AthenaRay once registered */
-#if defined(CONFIG_BOARD_TOTORO)
+#if defined(CONFIG_BOARD_TASSVE)
+MACHINE_START(BCM1160, "GT-S5570I Board")
+#elif defined(CONFIG_BOARD_TOTORO)
 MACHINE_START(BCM1160, "GT-S5360 Board")
 #elif defined(CONFIG_BOARD_COOPERVE)
 MACHINE_START(BCM1160, "GT-S5830I Board")
