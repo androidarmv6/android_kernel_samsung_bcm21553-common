@@ -107,7 +107,8 @@
 
 #ifdef CONFIG_BCM_CAM_S5K4ECGX   // for only CooperVE
 /*s5k4ecgx*/  
-#define s5k4ecgx_Core_GPIO 35
+#define S5K4ECGX_CORE_GPIO		35
+#define S5K4ECGX_RESET_GPIO	4
 
 extern int bcm_gpio_pull_up(unsigned int gpio, bool up);
 extern int bcm_gpio_pull_up_down_enable(unsigned int gpio, bool enable);
@@ -258,6 +259,10 @@ struct cam_generic_t {
 static struct cam_generic_t *cam_g;
 static int gNumOfStillPingPongBuf = STILL_PING_PANG;
 
+#ifdef CONFIG_BCM_CAM_S5K4ECGX 
+struct device *cam_dev;
+EXPORT_SYMBOL(cam_dev);
+#endif
 struct stCamacqSensorManager_t* GetCamacqSensorManager()
 {
     return cam_g->pstSensorManager;
@@ -285,6 +290,11 @@ static void wakeup_push_queue(struct buf_q *queue, CAM_BufData * buf);
 static bool wait_pull_queue(struct buf_q *queue, CAM_BufData * buf);
 static void taskcallback(UInt32 intr_status, UInt32 rx_status, UInt32 image_addr, UInt32 image_size, UInt32 raw_intr_status, UInt32 raw_rx_status, void *userdata);
 static int mem_mem_dma(dma_addr_t dst_addr, dma_addr_t src_addr, int dma_tx_size);
+#ifdef CONFIG_BCM_CAM_S5K4ECGX 
+static ssize_t camflash_onoff(struct device *dev, struct device_attribute *attr, const char *buf, size_t size);
+//static DEVICE_ATTR(camflash, S_IRUGO | S_IWUSR | S_IWOTH | S_IXOTH, NULL, camflash_onoff);
+static DEVICE_ATTR(camflash, S_IRUGO | S_IWUSR | S_IWGRP, NULL, camflash_onoff);
+#endif
 extern struct sens_methods *CAMDRV_primary_get(void);
 ktime_t t;
 static short* capture_buffer_global=NULL;
@@ -521,6 +531,7 @@ static long cam_ioctl(struct file *file, unsigned int cmd,
 	}
 	case CAM_IOCTL_SET_THUMBNAIL_PARAMS:
 		ret =copy_from_user(&cam_g->sens[sensor].th, (void *)arg,sizeof(CAM_Parm_t));
+		if(ret != 0)
 		{
 			printk(KERN_INFO" CAM_IOCTL_SET_THUMBNAIL_PARAMS: copy to user ERROR: \r\n");
 			return ret;
@@ -607,11 +618,17 @@ static long cam_ioctl(struct file *file, unsigned int cmd,
 		}
 	case CAM_IOCTL_ENABLE_AUTOFOCUS:
 		{
-			if (cam_g->sens[sensor].sens_m->
-			    DRV_TurnOnAF(sensor) != HAL_CAM_SUCCESS) {
-				rc = -EFAULT;
+			int result;
+			result=cam_g->sens[sensor].sens_m->DRV_TurnOnAF(sensor);
+			if(result!= HAL_CAM_SUCCESS) {
+				if(result==2)
+					rc =-2;
+				else									
+					rc = -EFAULT;
 				printk(KERN_INFO"CAM_IOCTL_ENABLE_AUTOFOCUS: CAMDRV_TurnOnAF(): ERROR: \r\n");
 			}
+                        else
+                            	printk(KERN_INFO"CAM_IOCTL_ENABLE_AUTOFOCUS: SUCCESS \r\n");
 			break;
 		}
 	case CAM_IOCTL_DISABLE_AUTOFOCUS:
@@ -621,8 +638,32 @@ static long cam_ioctl(struct file *file, unsigned int cmd,
 				rc = -EFAULT;
 				printk(KERN_INFO"CAM_IOCTL_DISABLE_AUTOFOCUS: CAMDRV_TurnOffAF(): ERROR: \r\n");
 			}
+                        else
+                                printk(KERN_INFO"CAM_IOCTL_DISABLE_AUTOFOCUS: SUCCESS \r\n");
 			break;
 		}
+
+#ifdef CONFIG_BCM_CAM_S5K4ECGX
+	case CAM_IOCTL_CANCEL_AUTOFOCUS:
+		if (cam_g->sens[sensor].sens_m->
+			    DRV_CancelAF(sensor) != HAL_CAM_SUCCESS) {
+				rc = -EFAULT;
+				printk(KERN_INFO"CAM_IOCTL_CANCEL_AUTOFOCUS: CAMDRV_TurnOffAF(): ERROR: \r\n");
+			}
+          else
+            printk(KERN_INFO"CAM_IOCTL_CANCEL_AUTOFOCUS: SUCCESS \r\n");
+		
+		break;
+
+	case CAM_IOCTL_SET_FLASH_FOR_VIDEO:
+		printk(KERN_INFO"%s(): CAM_IOCTL_SET_FLASH_FOR_VIDEO\r\n", __FUNCTION__);
+		if (cam_g->sens[sensor].sens_m->DRV_SetFlashForVideo((bool)arg, sensor) != HAL_CAM_SUCCESS)
+		{
+			rc = -EFAULT;
+			printk(KERN_INFO"CAM_IOCTL_SET_FLASH_FOR_VIDEO: DRV_SetFlashForVideo(): ERROR: \r\n");
+		}
+		break;
+#endif
 			
 	 case CAM_IOCTL_GET_STILL_YCbCr:
                 {
@@ -1158,7 +1199,7 @@ static int cam_power_up(CamSensorSelect_t sensor)
 {
 	int rc = -1;
 	struct camera_sensor_t *c;
-	printk(KERN_INFO"%s called \n",__FUNCTION__);
+	printk(KERN_INFO"%s called ++ \n",__FUNCTION__);
 #ifdef CONFIG_BCM_CAM_SR200PC10
 	regulator_set_voltage(cam_g->cam_regulator_i,1800000,1800000);	
 	if (cam_g->cam_regulator_i)
@@ -1180,6 +1221,12 @@ static int cam_power_up(CamSensorSelect_t sensor)
 	if (cam_g->cam_regulator_i)
 		rc = regulator_enable(cam_g->cam_regulator_i);
 #elif defined (CONFIG_BCM_CAM_S5K4ECGX)
+//	gpio_set_value(S5K4ECGX_RESET_GPIO, 1); // 1
+	gpio_set_value(S5K4ECGX_RESET_GPIO, 0); // 2
+
+	gpio_request(S5K4ECGX_CORE_GPIO, NULL); 
+	gpio_direction_output(S5K4ECGX_CORE_GPIO, 1);
+	gpio_free(S5K4ECGX_CORE_GPIO); 
 	regulator_set_voltage(cam_g->cam_regulator_a,2800000,2800000);
 	if (cam_g->cam_regulator_a)
 		rc = regulator_enable(cam_g->cam_regulator_a);
@@ -1196,7 +1243,8 @@ static int cam_power_up(CamSensorSelect_t sensor)
 	if (cam_g->cam_regulator_c)
 		rc = regulator_enable(cam_g->cam_regulator_c);
 
-	gpio_direction_output(s5k4ecgx_Core_GPIO, 1);
+	gpio_set_value(S5K4ECGX_RESET_GPIO, 1); // 2
+//	udelay(15); // 2
 #else
 	regulator_set_voltage(cam_g->cam_regulator_c,1200000,1200000);	
 	if (cam_g->cam_regulator_c)
@@ -1224,10 +1272,11 @@ static int cam_power_up(CamSensorSelect_t sensor)
 	}
 #ifdef CONFIG_BCM_CAM_S5K4ECGX  // for only CooperVE
 	if(rc < 0) 
-		printk(KERN_INFO"s5k4ecgx_Core_GPIO power up failed !! =%d\n",s5k4ecgx_Core_GPIO);
+		printk(KERN_INFO"S5K4ECGX_CORE_GPIO power up failed !! =%d\n",S5K4ECGX_CORE_GPIO);
 	else
-		printk(KERN_INFO"s5k4ecgx_Core_GPIO power up Success =%d\n",s5k4ecgx_Core_GPIO);
+		printk(KERN_INFO"S5K4ECGX_CORE_GPIO power up Success =%d\n",S5K4ECGX_CORE_GPIO);
 
+printk(KERN_INFO"%s called -- \n",__FUNCTION__);
 	return rc;
 #else
 	return 0;
@@ -1238,6 +1287,7 @@ static int cam_power_down(CamSensorSelect_t sensor)
 {
 	int rc = -1;
 	struct camera_sensor_t *c;
+	printk(KERN_INFO"%s called ++ \n",__FUNCTION__);
 	c = &cam_g->sens[sensor];
 	c->sensor_intf = c->sens_m->DRV_GetIntfConfig(sensor);
 	if (c->sensor_intf == NULL) {
@@ -1253,6 +1303,22 @@ static int cam_power_down(CamSensorSelect_t sensor)
 		rc = -EFAULT;
 	}
 
+#ifdef CONFIG_BCM_CAM_S5K4ECGX  // for only CooperVE
+        if (cam_g->cam_regulator_a)
+        	regulator_disable(cam_g->cam_regulator_a);
+	 udelay(1);
+        if (cam_g->cam_regulator_i)
+        	regulator_disable(cam_g->cam_regulator_i);
+	 udelay(1);		
+	 gpio_request(S5K4ECGX_CORE_GPIO, NULL); 
+	gpio_direction_output(S5K4ECGX_CORE_GPIO, 0);
+	gpio_free(S5K4ECGX_CORE_GPIO); 
+        udelay(1);
+        if (cam_g->cam_regulator_c)
+        regulator_disable(cam_g->cam_regulator_c);
+        gpio_set_value(S5K4ECGX_RESET_GPIO, 0);
+	 mdelay(1);
+#else	
         if (cam_g->cam_regulator_i)
         regulator_disable(cam_g->cam_regulator_i);
 	 
@@ -1262,10 +1328,8 @@ static int cam_power_down(CamSensorSelect_t sensor)
         if (cam_g->cam_regulator_c)
         regulator_disable(cam_g->cam_regulator_c);
 	 
-#ifdef CONFIG_BCM_CAM_S5K4ECGX  // for only CooperVE
-		gpio_direction_output(s5k4ecgx_Core_GPIO, 0);
 #endif
-	
+printk(KERN_INFO"%s called -- \n",__FUNCTION__);
 	return 0;
 
 }
@@ -1527,8 +1591,8 @@ int camera_enable(CamSensorSelect_t sensor)
 		c->sens_m->
 			  DRV_SetVideoCaptureMode(c->main.size_window.size,
 						  c->main.format, sensor,c->main.mode);
-		c->sens_m->DRV_SetFrameRate(c->main.fps, sensor);
-		c->sens_m->DRV_EnableVideoCapture(sensor);
+//		c->sens_m->DRV_SetFrameRate(c->main.fps, sensor);
+//		c->sens_m->DRV_EnableVideoCapture(sensor);
 		/* Sensor driver methods to enable video modes */
 		if(csl_cam_rx_start(c->hdl))
 			printk(KERN_INFO"Unable to start RX\n");
@@ -1538,7 +1602,8 @@ int camera_enable(CamSensorSelect_t sensor)
 	/* Sequence from app is MEM_REGISTER -- ENABLE -- MEM_BUFFERS */
 	
 	enable_irq(c->cam_irq);
-	
+
+#if 0	
     if (c->main.format == CamDataFmtJPEG)      // In case of JPEG capture
     {
         c->sCaptureFrameCountdown = 1;
@@ -1547,6 +1612,9 @@ int camera_enable(CamSensorSelect_t sensor)
     {
         c->sCaptureFrameCountdown = 0;
     }
+#else       // CSP_465088 Test Patch : To enhance shot-to-shot time (CooperVE)
+    c->sCaptureFrameCountdown = 0;
+#endif
 
 	wake_lock(&cam_g->camera_wake_lock);
 	c->rd_Q.isActive = 0;
@@ -1579,7 +1647,7 @@ int camera_disable(CamSensorSelect_t sensor)
 	} else {
 		printk(KERN_INFO "Disabling stream\n");
 		csl_cam_rx_stop(c->hdl);
-		c->sens_m->DRV_DisablePreview(sensor);
+//		c->sens_m->DRV_DisablePreview(sensor);
 	}
 	writel(0x3f0f, io_p2v(BCM21553_MLARB_BASE + 0x100)); //BMARBL_MACONF0 
 	csl_cam_reset(c->hdl, (CSL_CAM_RESET_t)(CSL_CAM_RESET_SWR | CSL_CAM_RESET_ARST ));
@@ -1617,6 +1685,7 @@ static int cam_open(struct inode *inode, struct file *file)
 	} else {
 		cam_g->curr = CamSensorSecondary;
 	}
+	
 	board_sysconfig(SYSCFG_CAMERA,SYSCFG_INIT);
 	board_sysconfig(SYSCFG_CAMERA,SYSCFG_ENABLE);
 	c = &cam_g->sens[cam_g->curr];
@@ -1879,6 +1948,65 @@ done:
     }
 #endif
 
+#ifdef CONFIG_BCM_CAM_S5K4ECGX 
+
+static ssize_t camflash_onoff(
+		struct device *dev, struct device_attribute *attr,
+		const char *buf, size_t size)
+{
+	char *after;
+	int i;
+	unsigned long value = simple_strtoul(buf, &after, 10);
+
+	/* initailize falsh IC */
+	gpio_set_value(CAM_FLASH_MODE,0);
+	gpio_set_value(CAM_FLASH_EN,0);
+	mdelay(1); // to enter a shutdown mode
+
+	if(value ==  1)
+	{
+		gpio_direction_output(CAM_FLASH_MODE,1);
+//		gpio_direction_output(CAM_FLASH_EN,1);
+	
+	    printk("[CAM] Flash ON [%s] \n", __func__);
+	}
+	// set to flash mode
+	else if(value == 2)
+	{
+		gpio_set_value(CAM_FLASH_EN,1);
+	}
+	else if(value == 3)
+	{
+		for(i=0;i<7;i++)
+		{
+			udelay(1);
+			gpio_set_value(CAM_FLASH_MODE,1);
+			udelay(1);
+			gpio_set_value(CAM_FLASH_MODE,0);
+		}
+		gpio_set_value(CAM_FLASH_MODE,1); //value set
+	}
+	else if(value == 4)
+	{
+		for(i=0;i<7;i++)
+		{
+			udelay(1);
+			gpio_set_value(CAM_FLASH_MODE,1);
+			udelay(1);
+			gpio_set_value(CAM_FLASH_MODE,0);
+		}
+		gpio_set_value(CAM_FLASH_MODE,1); //value set
+	}	
+	else
+	{
+	    printk("[CAM] Flash OFF [%s] \n", __func__);
+	}
+	
+    return size;
+}
+#endif
+
+
 /* CAM I2C functions end */
 struct i2c_driver i2c_driver_cam = {
 	.driver = {
@@ -1914,8 +2042,28 @@ static int __init cam_init(void)
 		rc = PTR_ERR(cam_g->cam_class);
 		goto err;
 	}
+#ifndef CONFIG_BCM_CAM_S5K4ECGX 
 	device_create(cam_g->cam_class, NULL, MKDEV(BCM_CAM_MAJOR, 0), NULL,
 		      "camera");
+#else
+	cam_dev=device_create(cam_g->cam_class, NULL, MKDEV(BCM_CAM_MAJOR, 0), NULL, "camera");
+
+	if (IS_ERR(cam_dev))
+        pr_err("[CAM] Failed to create device(cam_dev)!\n");
+	if (device_create_file(cam_dev, &dev_attr_camflash) < 0)
+        pr_err("[CAM] Failed to create device file(%s)!\n", dev_attr_camflash.attr.name);
+
+	// ksh0807.kim
+	gpio_request(CAM_FLASH_MODE, "cam_flash_mode");
+	gpio_request(CAM_FLASH_EN, "cam_flash_en");
+
+	gpio_direction_output(CAM_FLASH_MODE,0);
+	gpio_direction_output(CAM_FLASH_EN,0);
+
+	// Set Reset Pin Low
+	gpio_set_value(S5K4ECGX_RESET_GPIO, 0);
+	
+#endif
 board_sysconfig(SYSCFG_CAMERA,SYSCFG_INIT);
 #if 1//defined(CONFIG_BOARD_THUNDERBIRD_EDN31)
 	cam_g->cam_regulator_i = regulator_get(NULL, "cam_vddi");
@@ -1987,11 +2135,11 @@ board_sysconfig(SYSCFG_CAMERA,SYSCFG_INIT);
 	}*/
 
 #ifdef CONFIG_BCM_CAM_S5K4ECGX  // for only CooperVE
-	gpio_request(s5k4ecgx_Core_GPIO, NULL); 
-	cam_power_up(cam_g->curr);
-	msleep(50);
+//	gpio_request(S5K4ECGX_CORE_GPIO, NULL); 
+//	cam_power_up(cam_g->curr);
+//	msleep(50);
 #endif
-	cam_power_down(cam_g->curr);
+//	cam_power_down(cam_g->curr);
 	in = ktime_get();
 	printk(KERN_INFO"Cam_init end sec %d nsec %d\n",in.tv.sec,in.tv.nsec);
 	return rc;
