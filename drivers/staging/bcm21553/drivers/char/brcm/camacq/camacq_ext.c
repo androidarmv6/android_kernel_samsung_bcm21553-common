@@ -88,6 +88,15 @@ _stCamacqSensorRegs g_stCamacqMainSensorRegs =
     pvExpCompensation_7_Regs     : CAMACQ_MAIN_REG_EXPCOMPENSATION_LEVEL_7,
     pvExpCompensation_8_Regs     : CAMACQ_MAIN_REG_EXPCOMPENSATION_LEVEL_8,
 
+#ifdef CONFIG_BCM_CAM_S5K4ECGX // for cooperve only
+    pvAELockRegs            : CAMACQ_MAIN_AE_LOCK,
+    pvAEUnlockRegs          : CAMACQ_MAIN_AE_UNLOCK,
+    pvAWBLockRegs           : CAMACQ_MAIN_AWB_LOCK,
+    pvAWBUnlockReg          : CAMACQ_MAIN_AWB_UNLOCK,
+    pvSingleAFStartRegs     : CAMACQ_MAIN_REG_SINGLE_AF_START,   // start af
+    pvPreviewRetRegs        : CAMACQ_MAIN_REG_PREVIEW_RETURN,
+#endif    
+
     /* AF */
     pvSetAFRegs             : CAMACQ_MAIN_REG_SET_AF,   // start af
     pvOffAFRegs             : CAMACQ_MAIN_REG_OFF_AF,
@@ -212,6 +221,71 @@ _stCamacqSensorRegs g_stCamacqMainSensorRegs =
     pvSnapshotLowlightRegs	: CAMACQ_MAIN_REG_LOWLIGHT,
     pvSnapshotNightsceneRegs	: CAMACQ_MAIN_REG_NIGHTSHOT,
    #endif
+
+   #if 0
+#ifdef CONFIG_BCM_CAM_S5K4ECGX 
+   pvZoom_0_reg	: CAMACQ_MAIN_REG_ZOOM0,
+   pvZoom_1_reg	: CAMACQ_MAIN_REG_ZOOM1,
+   pvZoom_2_reg	: CAMACQ_MAIN_REG_ZOOM2,
+   pvZoom_3_reg	: CAMACQ_MAIN_REG_ZOOM3,
+   pvZoom_4_reg	: CAMACQ_MAIN_REG_ZOOM4,
+   pvZoom_5_reg	: CAMACQ_MAIN_REG_ZOOM5,
+   pvZoom_6_reg	: CAMACQ_MAIN_REG_ZOOM6,
+   pvZoom_7_reg	: CAMACQ_MAIN_REG_ZOOM7,
+   pvZoom_8_reg	: CAMACQ_MAIN_REG_ZOOM8,
+#endif
+   #endif
+
+#ifdef CONFIG_BCM_CAM_S5K4ECGX 
+	pvFlashInit         	: CAMACQ_MAIN_REG_FLASH_INIT,
+	pvFlashPreOn		: CAMACQ_MAIN_REG_PRE_FLASH_ON,
+	pvFlashPreOff		: CAMACQ_MAIN_REG_PRE_FLASH_OFF,
+	pvFlashOn		: CAMACQ_MAIN_REG_FLASH_ON,
+	pvFlashOff		: CAMACQ_MAIN_REG_FLASH_OFF,
+	pvFlashLowCapOn		: CAMACQ_MAIN_REG_LOW_CAP_ON,
+	pvFlashLowCapOff	: CAMACQ_MAIN_REG_LOW_CAP_OFF,
+
+	pvZoom_1_25_reg_0	: CAMACQ_MAIN_REG_1_25_ZOOM0,
+	pvZoom_1_25_reg_1	: CAMACQ_MAIN_REG_1_25_ZOOM1,
+	pvZoom_1_25_reg_2	: CAMACQ_MAIN_REG_1_25_ZOOM2,
+	pvZoom_1_25_reg_3	: CAMACQ_MAIN_REG_1_25_ZOOM3,
+	pvZoom_1_25_reg_4	: CAMACQ_MAIN_REG_1_25_ZOOM4,
+	pvZoom_1_25_reg_5	: CAMACQ_MAIN_REG_1_25_ZOOM5,
+	pvZoom_1_25_reg_6	: CAMACQ_MAIN_REG_1_25_ZOOM6,
+	pvZoom_1_25_reg_7	: CAMACQ_MAIN_REG_1_25_ZOOM7,
+	pvZoom_1_25_reg_8	: CAMACQ_MAIN_REG_1_25_ZOOM8,
+	
+	pvZoom_1_6_reg_0	: CAMACQ_MAIN_REG_1_6_ZOOM0,
+	pvZoom_1_6_reg_1	: CAMACQ_MAIN_REG_1_6_ZOOM1,
+	pvZoom_1_6_reg_2	: CAMACQ_MAIN_REG_1_6_ZOOM2,
+	pvZoom_1_6_reg_3	: CAMACQ_MAIN_REG_1_6_ZOOM3,
+	pvZoom_1_6_reg_4	: CAMACQ_MAIN_REG_1_6_ZOOM4,
+	pvZoom_1_6_reg_5	: CAMACQ_MAIN_REG_1_6_ZOOM5,
+	pvZoom_1_6_reg_6	: CAMACQ_MAIN_REG_1_6_ZOOM6,
+	pvZoom_1_6_reg_7	: CAMACQ_MAIN_REG_1_6_ZOOM7,
+	pvZoom_1_6_reg_8	: CAMACQ_MAIN_REG_1_6_ZOOM8,
+	
+	pvZoom_2_reg_0	: CAMACQ_MAIN_REG_2_ZOOM0,
+	pvZoom_2_reg_1	: CAMACQ_MAIN_REG_2_ZOOM1,
+	pvZoom_2_reg_2	: CAMACQ_MAIN_REG_2_ZOOM2,
+	pvZoom_2_reg_3	: CAMACQ_MAIN_REG_2_ZOOM3,
+	pvZoom_2_reg_4	: CAMACQ_MAIN_REG_2_ZOOM4,
+	pvZoom_2_reg_5	: CAMACQ_MAIN_REG_2_ZOOM5,
+	pvZoom_2_reg_6	: CAMACQ_MAIN_REG_2_ZOOM6,
+	pvZoom_2_reg_7	: CAMACQ_MAIN_REG_2_ZOOM7,
+	pvZoom_2_reg_8	: CAMACQ_MAIN_REG_2_ZOOM8,
+
+	pvZoom_4_reg_0	: CAMACQ_MAIN_REG_4_ZOOM0,
+	pvZoom_4_reg_1	: CAMACQ_MAIN_REG_4_ZOOM1,
+	pvZoom_4_reg_2	: CAMACQ_MAIN_REG_4_ZOOM2,
+	pvZoom_4_reg_3	: CAMACQ_MAIN_REG_4_ZOOM3,
+	pvZoom_4_reg_4	: CAMACQ_MAIN_REG_4_ZOOM4,
+	pvZoom_4_reg_5	: CAMACQ_MAIN_REG_4_ZOOM5,
+	pvZoom_4_reg_6	: CAMACQ_MAIN_REG_4_ZOOM6,
+	pvZoom_4_reg_7	: CAMACQ_MAIN_REG_4_ZOOM7,
+	pvZoom_4_reg_8	: CAMACQ_MAIN_REG_4_ZOOM8,
+
+#endif
  	
 };
 

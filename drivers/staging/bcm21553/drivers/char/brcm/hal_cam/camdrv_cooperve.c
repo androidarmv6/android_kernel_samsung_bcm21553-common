@@ -80,6 +80,13 @@ the GPL, without Broadcom's express prior written consent.
 #define CAMERA_IMAGE_INTERFACE  CSL_CAM_INTF_CPI
 #define CAMERA_PHYS_INTF_PORT   CSL_CAM_PORT_AFE_1
 
+#define FULL_FLASH 20
+#define PRE_FLASH 7
+#define MOVIE_FLASH 7
+#define MACRO_FLASH 14
+#define PRE_FLASH_OFF -1
+#define FLASH_OFF 0
+
 CAMDRV_RESOLUTION_T    sViewFinderResolution        = CAMDRV_RESOLUTION_VGA;
 CAMDRV_IMAGE_TYPE_T    sViewFinderFormat            = CAMDRV_IMAGE_YUV422;
 CAMDRV_RESOLUTION_T    sCaptureImageResolution        = CAMDRV_RESOLUTION_QSXGA;
@@ -94,24 +101,38 @@ CAMDRV_IMAGE_TYPE_T    sCaptureImageFormat            = CAMDRV_IMAGE_JPEG;
 
 extern struct stCamacqSensorManager_t* GetCamacqSensorManager(); //BYKIM_CAMACQ
 UInt8  CAMDRV_CheckEXP(UInt8 mode);
+HAL_CAM_Result_en_t CAMDRV_SetFlash(int lux_val);
+U16 CAMDRV_GetCurrentLux(CamSensorSelect_t sensor);
+void CAMDRV_Set_REG_TC_DBG_AutoAlgEnBits(struct i2c_client* pI2cClient, int bit, int set);
+void CAMDRV_Check_REG_TC_GP_EnableCaptureChanged(struct i2c_client* pI2cClient);
+HAL_CAM_Result_en_t CAMDRV_SetAF(char value);
+
+UInt8  mAFStatus = EXT_CFG_AF_SUCCESS;
+UInt8 gAFCancel=0;
+static int Cam_Init = 0;
+CAM_Parm_t Drv_parm;
+UInt8 gFlashForExif=0;
+static UL32 ExposureTime;
+static int ISOSpeed;
+
 
 /*---------Sensor Power On */
 
 static CamSensorIntfCntrl_st_t CamPowerOnSeq[] = {
 	// -------Turn everything OFF   
-    {GPIO_CNTRL, RESET_CAMERA,   GPIO_SetLow},
+            //    {GPIO_CNTRL, RESET_CAMERA,   GPIO_SetLow},
     {MCLK_CNTRL, CamDrv_NO_CLK,  CLK_TurnOff},
-    {PAUSE, 1,                       Nop_Cmd},
+            //    {PAUSE, 1,                       Nop_Cmd},
 // -------Turn On Power to ISP
-    {PAUSE, 1,                       Nop_Cmd},
+            //    {PAUSE, 1,                       Nop_Cmd},
 // -------Enable Clock to Cameras @ Main clock speed
     {MCLK_CNTRL, SENSOR_CLOCK_SPEED,    CLK_TurnOn},
-    {PAUSE, 1, Nop_Cmd},
+            //    {PAUSE, 1, Nop_Cmd},
 // -------Raise PwrDn to ISP
     {PAUSE, 1, Nop_Cmd},
 // -------Raise Reset to ISP
-    {GPIO_CNTRL, RESET_CAMERA,   GPIO_SetHigh},
-    {PAUSE, 1, Nop_Cmd}
+            //    {GPIO_CNTRL, RESET_CAMERA,   GPIO_SetHigh},
+            //    {PAUSE, 1, Nop_Cmd}
 
 };
 
@@ -186,11 +207,12 @@ CAM_Sensor_Supported_Params_t CamPrimaryDefault_st =
 	/*****************************************
 	  zoom support by sensor 
 	  *****************************************/
-	0, //Number of zoom steps sensor can support 
-	{0}, // zoom steps
+	27, //Number of zoom steps sensor can support 
+	{CamZoom_1_25_0,CamZoom_1_25_1,CamZoom_1_25_2,	CamZoom_1_25_3,	CamZoom_1_25_4,	CamZoom_1_25_5,	CamZoom_1_25_6,	CamZoom_1_25_7,	CamZoom_1_25_8,	CamZoom_1_6_0,	CamZoom_1_6_1,	CamZoom_1_6_2,	CamZoom_1_6_3,	CamZoom_1_6_4,	CamZoom_1_6_5,	CamZoom_1_6_6,	CamZoom_1_6_7,	CamZoom_1_6_8,	CamZoom_2_0_0,	CamZoom_2_0_1,	CamZoom_2_0_2,	CamZoom_2_0_3,	CamZoom_2_0_4,	CamZoom_2_0_5,	CamZoom_2_0_6,	CamZoom_2_0_7,	CamZoom_2_0_8,}, // zoom steps	
 	
 	"SAMSUNG",
-	"COOPERVE" //target name
+	"COOPERVE" ,//target name
+         TRUE
 };
 
 /** Primary Sensor Configuration and Capabilities  */
@@ -445,7 +467,8 @@ static CamFrameRate_st_t SecondaryFrameRate_st =
 };
 
 //---------FLASH/TORCH State
-static FlashLedState_t  stv0986_sys_flash_state = Flash_Off;
+static FlashLedState_t  stv0986_sys_flash_mode = Flash_Off;
+static int				stv0986_sys_flash_state = 0;	
 static Boolean          stv0986_fm_is_on        = FALSE;    
 static Boolean          stv0986_torch_is_on     = FALSE;    
 
@@ -687,7 +710,6 @@ HAL_CAM_Result_en_t CAMDRV_SetZoom(CamZoom_t step, CamSensorSelect_t sensor);
 
 //HAL_CAM_Result_en_t CamacqExtWriteI2cLists( const void *pvArg, int iResType ); //BYKIM_CAMACQ
 
-
 //***************************************************************************
 //
 // Function Name:  SensorWriteI2c
@@ -836,6 +858,11 @@ HAL_CAM_Result_en_t cam_WaitValue(UInt32 timeout, UInt16 sub_addr, UInt8 value)
 void cam_InitStatus ()
 {
     sCamI2cStatus = HAL_CAM_SUCCESS;
+      Drv_Scene = CamSceneMode_Auto;
+      Drv_WB = CamWB_Auto;	  
+      Drv_Iso = CamSensitivity_Auto;	  
+      Drv_ME = 0;
+      Drv_Brightness = 0;
 }
 
 HAL_CAM_Result_en_t cam_GetStatus ()
@@ -979,27 +1006,41 @@ static HAL_CAM_Result_en_t Init_cooperve_sensor(CamSensorSelect_t sensor)
 	    printk(KERN_ERR"write CAMACQ_SENSORDATA_INIT error \n");
   	    return HAL_CAM_ERROR_INTERNAL_ERROR;
 	}
+
+	iRet =   pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_FLASH_INIT );
+	if(iRet<0)
+	{
+		printk(KERN_ERR"write CAMACQ_SENSORDATA_FLASH_INIT error \n");
+		return HAL_CAM_ERROR_INTERNAL_ERROR;
+	}
+
        iRet =   pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SCENE_NONE);
 	if(iRet<0)
 	{
 	    printk(KERN_ERR"write CAMACQ_SENSORDATA_SCENE_NONE error \n");
   	    return HAL_CAM_ERROR_INTERNAL_ERROR;
 	}
-       Drv_Scene =  CamSceneMode_Auto;
-	
-      //reset settings	
-       Drv_Brightness=NULL;
-       Drv_WB=NULL;
-       Drv_ME=NULL;
-       Drv_Effect=NULL;
-       Drv_DTPmode= NULL;
 
-        printk(KERN_ERR"Init_cooperve_sensor end \n");
-        return HAL_CAM_SUCCESS;
+	//reset settings
+	Drv_Effect = CamDigEffect_NoEffect;
+	Drv_Size = 0;
+	Drv_Zoom = 0;
+	Drv_DTPmode = 0;
+	Drv_Mode = -1;
+	Drv_Saturation = 0;
+	Drv_Sharpness = 0;
+	Drv_Contrast = 0;
+	Drv_AutoContrast = 0;
+	Drv_AFCanceled = 1;
+	Drv_LowCapOn = 0;
+  	Drv_AECanceled = TRUE;
 
+	Cam_Init = 1;
+	PreviewRet = 0;
+
+	printk(KERN_INFO"Init_cooperve_sensor end \n");
+	return HAL_CAM_SUCCESS;
 }
-	
-	
 
 
 /****************************************************************************
@@ -1050,7 +1091,7 @@ HAL_CAM_Result_en_t CAMDRV_GetResolution(
 			HAL_CAM_ResolutionSize_st_t *sensor_size )
 
 {
-    HAL_CAM_Result_en_t result = HAL_CAM_SUCCESS;;
+      HAL_CAM_Result_en_t result = HAL_CAM_SUCCESS;
 	printk(KERN_ERR"CAMDRV_GetResolution : Empty \r\n");
     return result;
 }
@@ -1062,11 +1103,59 @@ HAL_CAM_Result_en_t CAMDRV_GetResolution(
 //****************************************************************************
 HAL_CAM_Result_en_t CAMDRV_SetImageQuality(UInt8 quality, CamSensorSelect_t sensor)
 {
-    HAL_CAM_Result_en_t result = HAL_CAM_SUCCESS;
-    UInt8 setting;
-                                                   
-    printk(KERN_ERR"CAMDRV_SetImageQuality(): quality, Empty\r\n");
-    return result;
+	HAL_CAM_Result_en_t result = HAL_CAM_SUCCESS;
+	struct stCamacqSensorManager_t* pstSensorManager = NULL;
+	struct stCamacqSensor_t* pstSensor = NULL;
+
+	printk(KERN_ERR"CAMDRV_SetImageQuality() called, quality = 0x%08x  Drv_Quality=  0x%08x \r\n",quality,Drv_Quality);
+#if 1
+	if(quality == Drv_Quality)	
+	{
+//            printk(KERN_ERR"Do not set quality,Drv_Quality=%d  \r\n", Drv_Quality);
+		Drv_Quality= quality;
+		return HAL_CAM_SUCCESS;
+	}	   	
+
+	pstSensorManager = GetCamacqSensorManager();
+	if( pstSensorManager == NULL )
+	{
+		printk(KERN_ERR"pstSensorManager is NULL \r\n");
+		return HAL_CAM_ERROR_OTHERS;
+	}
+	 
+	pstSensor = pstSensorManager->GetSensor( pstSensorManager, sensor );
+	if( pstSensor == NULL )
+	{
+		printk(KERN_ERR"pstSensor is NULL \r\n");
+		return HAL_CAM_ERROR_OTHERS;
+	}
+	
+	switch( quality )
+	{
+		case CamJpegQuality_Max:
+			pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_QUALITY_SF);
+			break;
+			
+		case CamJpegQuality_Nom:
+			pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_QUALITY_F);
+			break;
+			
+		case CamJpegQuality_Min:
+			pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_QUALITY_N);
+			break;
+			
+		default:
+			Drv_Quality = CamJpegQuality_Max;
+			break;
+	}
+
+	if (sCamI2cStatus != HAL_CAM_SUCCESS) {
+		printk(KERN_INFO"CAMDRV_SetImageQuality(): Error[%d] \r\n", sCamI2cStatus);
+		result = sCamI2cStatus;
+	}
+#endif
+	Drv_Quality = quality;
+	return result;
 }
 
 
@@ -1093,7 +1182,9 @@ HAL_CAM_Result_en_t CAMDRV_SetVideoCaptureMode(
     struct stCamacqSensorManager_t* pstSensorManager = NULL;
     struct stCamacqSensor_t* pstSensor = NULL;
     
-    printk(KERN_ERR"%s(): , sensor : %d \r\n", __FUNCTION__, sensor );
+      //    printk(KERN_ERR"%s(): , sensor : %d \r\n", __FUNCTION__, sensor );
+
+      printk(KERN_ERR"CAMDRV_SetVideoCaptureMode() called, mode = 0x%08x  Drv_Mode=  0x%08x sensor:%d\r\n", mode, Drv_Mode, sensor);
 
     pstSensorManager = GetCamacqSensorManager();
     if( pstSensorManager == NULL )
@@ -1114,16 +1205,26 @@ HAL_CAM_Result_en_t CAMDRV_SetVideoCaptureMode(
 	// CamacqExtWriteI2cLists(sr200pc10_init0,1);   // wingi 
     pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_INIT );
 #endif
-    // CamacqExtWriteI2cLists(sr200pc10_preview_table, 1); // wingi
-    pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_PREVIEW);
-    
-     if(mode==CamVideo)
+	Drv_LowCapOn = 0;
+	Drv_AFCanceled = 0;
+//	check??
+//	pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_PREVIEW);
+
+	if(mode==CamVideo)
+	{
+		printk(KERN_ERR"CAMDRV_SetVideoCaptureMode(): Video Preview!!!!\r\n");
+		pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_CAMCORDER);	
+	}
+	else
     {
-	printk(KERN_ERR"CAMDRV_SetVideoCaptureMode(): Video Preview!!!!\r\n");
-        pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_CAMCORDER);	
-    }
+		printk(KERN_ERR"hunny : CAMDRV_SetVideoCaptureMode(): Camera Preview!\r\n");
+        pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_PREVIEW_RETURN);
+    }	//To do
+    
+	Drv_Mode = mode;
 	//To do
-    return result;
+      //	msleep(200); 	//wait mode change
+	return result;
 }
 
 
@@ -1196,12 +1297,12 @@ HAL_CAM_Result_en_t CAMDRV_SetZoom(CamZoom_t step, CamSensorSelect_t sensor)
 	HAL_CAM_Result_en_t result = HAL_CAM_SUCCESS;
 	struct stCamacqSensorManager_t* pstSensorManager = NULL;
 	struct stCamacqSensor_t* pstSensor = NULL;
-#if 0 
+#if 1
 
 	printk(KERN_ERR"CAMDRV_SetZoom() called,step = %d, Drv_Zoom= %d\r\n",step,Drv_Zoom);
        if(step==Drv_Zoom)	
        {
-		printk(KERN_ERR"Do not set zoom \r\n");
+//            printk(KERN_ERR"Do not set zoom \r\n");
 		return HAL_CAM_SUCCESS;
 	}	   	
 
@@ -1220,6 +1321,121 @@ HAL_CAM_Result_en_t CAMDRV_SetZoom(CamZoom_t step, CamSensorSelect_t sensor)
 	}
 	switch( step )
 	{
+		case CamZoom_1_25_0:
+			 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_X1_25_Zoom_0);
+             break;
+		case CamZoom_1_25_1:
+			 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_X1_25_Zoom_1);
+             break;
+		case CamZoom_1_25_2:
+			 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_X1_25_Zoom_2);
+             break;
+		case CamZoom_1_25_3:
+			 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_X1_25_Zoom_3);
+             break;
+		case CamZoom_1_25_4:
+			 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_X1_25_Zoom_4);
+             break;
+		case CamZoom_1_25_5:
+			 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_X1_25_Zoom_5);
+             break;
+		case CamZoom_1_25_6:
+			 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_X1_25_Zoom_6);
+             break;
+		case CamZoom_1_25_7:
+			 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_X1_25_Zoom_7);
+             break;
+		case CamZoom_1_25_8:
+			 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_X1_25_Zoom_8);
+             break;
+			 
+		case CamZoom_1_6_0:
+			 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_X1_6_Zoom_0);
+             break;
+		case CamZoom_1_6_1:
+			 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_X1_6_Zoom_1);
+             break;
+		case CamZoom_1_6_2:
+			 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_X1_6_Zoom_2);
+             break;
+		case CamZoom_1_6_3:
+			 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_X1_6_Zoom_3);
+             break;
+		case CamZoom_1_6_4:
+			 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_X1_6_Zoom_4);
+             break;
+		case CamZoom_1_6_5:
+			 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_X1_6_Zoom_5);
+             break;
+		case CamZoom_1_6_6:
+			 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_X1_6_Zoom_6);
+             break;
+		case CamZoom_1_6_7:
+			 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_X1_6_Zoom_7);
+             break;
+		case CamZoom_1_6_8:
+			 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_X1_6_Zoom_8);
+             break;
+
+			 
+		case CamZoom_2_0_0:
+			 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_X2_Zoom_0);
+             break;
+		case CamZoom_2_0_1:
+			 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_X2_Zoom_1);
+             break;
+		case CamZoom_2_0_2:
+			 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_X2_Zoom_2);
+             break;
+		case CamZoom_2_0_3:
+			 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_X2_Zoom_3);
+             break;
+		case CamZoom_2_0_4:
+			 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_X2_Zoom_4);
+             break;
+		case CamZoom_2_0_5:
+			 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_X2_Zoom_5);
+             break;
+		case CamZoom_2_0_6:
+			 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_X2_Zoom_6);
+             break;
+		case CamZoom_2_0_7:
+			 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_X2_Zoom_7);
+             break;
+		case CamZoom_2_0_8:
+			 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_X2_Zoom_8);
+             break;
+
+		case CamZoom_4_0_0:
+			 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_X4_Zoom_0);
+             break;
+		case CamZoom_4_0_1:
+			 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_X4_Zoom_1);
+             break;
+		case CamZoom_4_0_2:
+			 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_X4_Zoom_2);
+             break;
+		case CamZoom_4_0_3:
+			 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_X4_Zoom_3);
+             break;
+		case CamZoom_4_0_4:
+			 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_X4_Zoom_4);
+             break;
+		case CamZoom_4_0_5:
+			 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_X4_Zoom_5);
+             break;
+		case CamZoom_4_0_6:
+			 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_X4_Zoom_6);
+             break;
+		case CamZoom_4_0_7:
+			 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_X4_Zoom_7);
+             break;
+		case CamZoom_4_0_8:
+			 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_X4_Zoom_8);
+             break;	
+
+		
+#if 0	
              case CamZoom_1_0:
 	       CamacqExtDirectlyWriteI2cLists(pstSensor->m_pI2cClient, reg_main_zoom_00,0 );
               //pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_ZOOM_0);
@@ -1339,7 +1555,7 @@ HAL_CAM_Result_en_t CAMDRV_SetZoom(CamZoom_t step, CamSensorSelect_t sensor)
 	     CamacqExtDirectlyWriteI2cLists(pstSensor->m_pI2cClient, reg_main_zoom_23,0 );
              //pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_ZOOM_8);
              break;
-			 
+#endif			 
              default:
                  printk(KERN_ERR"not supported zoom step \r\n");
              break;
@@ -1366,9 +1582,19 @@ HAL_CAM_Result_en_t CAMDRV_SetZoom(CamZoom_t step, CamSensorSelect_t sensor)
 HAL_CAM_Result_en_t CAMDRV_SetCamSleep(CamSensorSelect_t sensor)
 {
 	HAL_CAM_Result_en_t result = HAL_CAM_SUCCESS;
-	printk(KERN_ERR"CAMDRV_SetCamSleep(): Empty\r\n");
+	printk(KERN_ERR"CAMDRV_SetCamSleep(): called\r\n");
 
 	/* To be implemented. */
+      Cam_Init = false;
+
+	memset((void*)&Drv_parm,0,sizeof(CAM_Parm_t));
+
+//	CAMDRV_SetAF(EXT_CFG_AF_POWEROFF);
+//   pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_PREVIEW_RETURN);
+	CAMDRV_SetAF(EXT_CFG_AF_SET_NORMAL);
+
+	msleep(350);
+
 	return result;
 }
 
@@ -1413,7 +1639,11 @@ HAL_CAM_Result_en_t CAMDRV_DisableCapture(CamSensorSelect_t sensor)
 {
     UInt8 register_value,error_value;
     HAL_CAM_Result_en_t result = HAL_CAM_SUCCESS;
-	printk(KERN_ERR"CAMDRV_DisableCapture(): Empty\r\n");
+	printk(KERN_ERR"CAMDRV_DisableCapture(): called\r\n");
+
+	if(stv0986_sys_flash_state > 0)
+		CAMDRV_SetFlash(FLASH_OFF);
+
     return result;
 }
 
@@ -1457,11 +1687,9 @@ HAL_CAM_Result_en_t CAMDRV_CfgStillnThumbCapture(
     HAL_CAM_Result_en_t result = HAL_CAM_SUCCESS;
     struct stCamacqSensorManager_t* pstSensorManager = NULL;
     struct stCamacqSensor_t* pstSensor = NULL;
-    UInt8  Outdoor_Flag;
-    UInt8  Low_Flag;
-    UInt8  Night_Flag;	
+    U16 currentLux = 0;
 	
-	printk(KERN_ERR"%s(): \r\n, sensor : %d ", __FUNCTION__, sensor );
+	printk(KERN_ERR"%s():  sensor : %d ", __FUNCTION__, sensor );
 
     pstSensorManager = GetCamacqSensorManager();
     if( pstSensorManager == NULL )
@@ -1476,59 +1704,73 @@ HAL_CAM_Result_en_t CAMDRV_CfgStillnThumbCapture(
         printk(KERN_ERR"pstSensor is NULL \r\n");
         return HAL_CAM_ERROR_OTHERS;
     }
-	
-#if 0	
-    // CamacqExtWriteI2cLists1(sr200pc10_capture_table, 1); // this
-    printk(KERN_ERR"gv_Nightshot_mode = %d\r\n",gv_Nightshot_mode);
 
-    //check outdoor condition
-    CAMDRV_GetCurrentEIT(sensor,&Outdoor_Flag);
-	
-     if(gv_Nightshot_mode==TRUE)
-     {
-          CAMDRV_GetCurrentLux(sensor, &Night_Flag);   
-     }
-     else
-     {
-          CAMDRV_GetCurrentLux(sensor, &Low_Flag);   
-     }
-     printk(KERN_ERR"Outdoor_Flag[%d],Low_Flag[%d],Night_Flag[%d]\r\n",Outdoor_Flag,Low_Flag,Night_Flag);
+	/* Check current lux */
+	currentLux = CAMDRV_GetCurrentLux(sensor);
+	printk(KERN_ERR"  currentLux: 0x%08x, Flash Mode: %d\n", currentLux, stv0986_sys_flash_mode);
 
+	/* CASE 1 : Capture with no flash (System lag will be measured in this condition)*/
+	if(stv0986_sys_flash_mode != Flash_On && currentLux > 0x0032)
+	{
+		pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_CAPTURE );
+		CAMDRV_Check_REG_TC_GP_EnableCaptureChanged(pstSensor->m_pI2cClient);
+	}
+	/* CASE 2 : Flash turn on  in normal light condition*/
+	else if(stv0986_sys_flash_mode == Flash_On && currentLux > 0x0032)
+	{
+		/* AE/AWB unLock */
+		printk("01 AWB_AE UNLOCK: Drv_FocusMode = %d\n", Drv_FocusMode);
+		pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_AE_UNLOCK);
+		pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_AWB_UNLOCK);
+            Drv_AECanceled = TRUE;
+							 
+		if(Drv_FocusMode == EXT_CFG_AF_SET_MACRO)
+			CAMDRV_SetFlash(MACRO_FLASH);
+		else
+			CAMDRV_SetFlash(FULL_FLASH);
 
-      if(Outdoor_Flag==TRUE)
-        { 
-  	    pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_CAPTURE_OUTDOOR );
-        }
-    else
-        { 
-        if(gv_Nightshot_mode==TRUE)
-        { 
-            if(Night_Flag==TRUE)
-        { 
-  	    pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_CAPTURE_NIGHTSCENE );
-        }
-        else
-        {
-                pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_CAPTURE_NIGHTSCENE_OFF );
-            }          
-        }
-        else
-        {
-            if(Low_Flag==TRUE)
-            { 
-                pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_CAPTURE_LOWLUX );
-            }            
-            else
-            {
-  	    pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_CAPTURE_NORMAL );
-        }
-        }
-    }
-#else
-	pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_CAPTURE );
+		mdelay(200);
+		pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_CAPTURE );
+		CAMDRV_Check_REG_TC_GP_EnableCaptureChanged(pstSensor->m_pI2cClient);
+	}
+	else
+	{
+		/* CASE 3 : flash off on below scene mode */	
+		if(Drv_Scene == CamSceneMode_Night || Drv_Scene == CamSceneMode_Firework)
+		{
+			pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_CAPTURE );
+			CAMDRV_Check_REG_TC_GP_EnableCaptureChanged(pstSensor->m_pI2cClient);
+		}
+		else
+		{
+			/* CASE 4 : flash auto mode & low light condition */
+			pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_LOW_CAP_ON );
 
-    msleep(1000);
-#endif
+			if(stv0986_sys_flash_mode != Flash_Off)
+			{
+				/* AE/AWB unLock */
+				printk("02 AWB_AE UNLOCK: Drv_FocusMode = %d\n", Drv_FocusMode);
+				pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_AE_UNLOCK);
+				pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_AWB_UNLOCK);
+                        Drv_AECanceled = TRUE;
+
+				if(Drv_FocusMode == EXT_CFG_AF_SET_MACRO)
+					CAMDRV_SetFlash(MACRO_FLASH);
+				else
+					CAMDRV_SetFlash(FULL_FLASH);
+			}
+			 if (Drv_Scene ==CamSceneMode_Night) mdelay(200);// skip 1 frames for AF 
+             else mdelay(120); // skip 1 frames for AF
+
+			pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_CAPTURE );
+			CAMDRV_Check_REG_TC_GP_EnableCaptureChanged(pstSensor->m_pI2cClient);
+			Drv_LowCapOn = 1;
+		}
+	}
+
+      PreviewRet = 1;
+	cam_InitStatus();
+	return result;
 }
 
 /****************************************************************************
@@ -1547,10 +1789,14 @@ HAL_CAM_Result_en_t CAMDRV_SetSceneMode(CamSceneMode_t scene_mode,
         struct stCamacqSensor_t* pstSensor = NULL;
 	
 	printk(KERN_ERR"CAMDRV_SetSceneMode() called, scene_mode =  0x%08x Drv_Scene= 0x%08x\r\n",scene_mode,Drv_Scene);
-#if 0 
+#if 1 
        if(scene_mode==Drv_Scene)	
        {
-		printk(KERN_ERR"Do not set scene_mode \r\n");
+//            printk(KERN_ERR"Do not set scene_mode \r\n");
+            if (scene_mode != CamSceneMode_Auto)
+            {
+                  gv_ForceSetSensor = FORCELY_SKIP;
+            }
 		return HAL_CAM_SUCCESS;
 	}	   	
 
@@ -1569,17 +1815,26 @@ HAL_CAM_Result_en_t CAMDRV_SetSceneMode(CamSceneMode_t scene_mode,
         }
 	
 	gv_Nightshot_mode =FALSE;
-
-        if((Drv_Scene==CamSceneMode_Auto)&&(scene_mode!=CamSceneMode_Auto)) //It means reset all settings
-        {
-            gv_ForceSetSensor=FORCELY_SKIP;
-            printk(KERN_ERR"gv_ForceSetSensor is FORCELY_SKIP [%d]: Write INIT values\r\n",gv_ForceSetSensor);	
-            pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_ISO_AUTO);
-            pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_AE_CENTERWEIGHTED);
-            pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_EFFECT_NONE);
-            pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_WB_AUTO);
-            pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_BRIGHTNESS_4);
-        }
+      /*
+              if((Drv_Scene==CamSceneMode_Auto)&&(scene_mode!=CamSceneMode_Auto)) //It means reset all settings
+              {
+                  gv_ForceSetSensor=FORCELY_SKIP;
+                  printk(KERN_ERR"gv_ForceSetSensor is FORCELY_SKIP [%d]: Write INIT values\r\n",gv_ForceSetSensor);	
+      //            pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_ISO_AUTO);
+                  pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_AE_CENTERWEIGHTED);
+                  pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_EFFECT_NONE);
+                  pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_WB_AUTO);
+                  pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_BRIGHTNESS_4);
+              }
+      */
+      if (scene_mode != CamSceneMode_Auto)
+      {
+            pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SCENE_NONE); // 36
+/*
+            if(Drv_AutoContrast != CamAutoContrast_off)
+			CAMDRV_SetAutoContrast(CamAutoContrast_off, sensor);
+*/
+      }
 
 	switch(scene_mode) 
 	{
@@ -1591,16 +1846,37 @@ HAL_CAM_Result_en_t CAMDRV_SetSceneMode(CamSceneMode_t scene_mode,
                     gv_ForceSetSensor=FORCELY_SET;
                     printk(KERN_ERR"gv_ForceSetSensor is FORCELY_SET [%d] : Rollback the values\r\n",gv_ForceSetSensor);	
                	}
+  			if(Drv_Effect != CamDigEffect_NoEffect) CAMDRV_SetDigitalEffect(CamDigEffect_NoEffect,sensor);
+			if(Drv_Brightness != CamBrightnessLevel_4)CAMDRV_SetBrightness(CamBrightnessLevel_4, sensor);
+// AE
+			if(Drv_Iso != CamSensitivity_Auto) CAMDRV_SetSensitivity(CamSensitivity_Auto, sensor);
+			if(Drv_Contrast != CamContrast_0 ) CAMDRV_SetContrast(CamContrast_0, sensor);
+			if(Drv_Saturation != CamSaturation_0) CAMDRV_SetSaturation(CamSaturation_0, sensor);
+			if(Drv_Sharpness != CamSharpness_0) CAMDRV_SetSharpness(CamSharpness_0, sensor);
+			if(Drv_WB != CamWB_Auto) CAMDRV_SetWBMode(CamWB_Auto, sensor);
+//			if(Drv_AutoContrast != CamAutoContrast_off) CAMDRV_SetAutoContrast(CamAutoContrast_off, sensor);
+
+//                  msleep(100);
+
             }
 		break;
             case CamSceneMode_Candlelight:
-                pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SCENE_CANDLE);
+            {
+                  CAMDRV_Set_REG_TC_DBG_AutoAlgEnBits(pstSensor->m_pI2cClient, 3, false);
+                  pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SCENE_CANDLE);
+            }
             break;
             case CamSceneMode_Landscape:
-                pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SCENE_LANDSCAPE);
+            {
+                  CAMDRV_SetMeteringType(CamMeteringType_Matrix, sensor);
+                  pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SCENE_LANDSCAPE);
+            }
             break;
             case CamSceneMode_Sunset:
-                pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SCENE_SUNSET);
+            {
+                  CAMDRV_Set_REG_TC_DBG_AutoAlgEnBits(pstSensor->m_pI2cClient, 3, false);
+                  pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SCENE_SUNSET);
+            }
             break;
             case CamSceneMode_Fallcolor:
                 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SCENE_FALL);
@@ -1612,10 +1888,16 @@ HAL_CAM_Result_en_t CAMDRV_SetSceneMode(CamSceneMode_t scene_mode,
             }
             break;
             case CamSceneMode_Party_Indoor:
-                pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SCENE_PARTY_INDOOR);
+            {
+                  CAMDRV_Set_REG_TC_DBG_AutoAlgEnBits(pstSensor->m_pI2cClient, 5, false);
+                  pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SCENE_PARTY_INDOOR);
+            }
             break;
             case CamSceneMode_Dusk_Dawn:
-                pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SCENE_DAWN);
+            {
+                  CAMDRV_Set_REG_TC_DBG_AutoAlgEnBits(pstSensor->m_pI2cClient, 3, false);
+                  pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SCENE_DAWN);
+            }
             break;
             case CamSceneMode_Againstlight:
                 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SCENE_AGAINST_LIGHT);
@@ -1626,11 +1908,20 @@ HAL_CAM_Result_en_t CAMDRV_SetSceneMode(CamSceneMode_t scene_mode,
             break;
             
             case CamSceneMode_Beach_Snow:
-                pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SCENE_BEACH_SNOW);
+            {
+                  CAMDRV_Set_REG_TC_DBG_AutoAlgEnBits(pstSensor->m_pI2cClient, 5, false);
+                  pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SCENE_BEACH_SNOW);
+            }
             break;
 		
             case CamSceneMode_Firework:
-                pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SCENE_FIRE);
+            {
+                  pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SCENE_FIRE);
+                  CAMDRV_SetSensitivity(CamSensitivity_50, sensor);
+            }
+            break;
+      case CamSceneMode_Text:
+            pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SCENE_TEXT);
             break;
 			
 	   default:
@@ -1663,10 +1954,10 @@ HAL_CAM_Result_en_t CAMDRV_SetWBMode(CamWB_WBMode_t wb_mode,
         struct stCamacqSensor_t* pstSensor = NULL;
 		
         printk(KERN_ERR"CAMDRV_SetWBMode() called, wb_mode = 0x%08x  Drv_WB=  0x%08x \r\n",wb_mode,Drv_WB);
-#if 0
+#if 1
        if(((gv_ForceSetSensor==NORMAL_SET)&&(wb_mode==Drv_WB))||(gv_ForceSetSensor==FORCELY_SKIP))	
        {
-		printk(KERN_ERR"Do not set wb_mode,Drv_Scene=%d  \r\n",Drv_Scene);
+//		printk(KERN_ERR"Do not set wb_mode, Drv_WB=%d  \r\n",Drv_WB);
 		Drv_WB= wb_mode;
 		return HAL_CAM_SUCCESS;
 	}	   	
@@ -1687,19 +1978,34 @@ HAL_CAM_Result_en_t CAMDRV_SetWBMode(CamWB_WBMode_t wb_mode,
     switch( wb_mode )
     {
         case CamWB_Auto:
-		pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_WB_AUTO);
+            {
+                  CAMDRV_Set_REG_TC_DBG_AutoAlgEnBits(pstSensor->m_pI2cClient, 3, true);
+                  pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_WB_AUTO);
+            }
             break;
         case CamWB_Daylight:
-		pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_WB_DAYLIGHT);
+            {
+                  CAMDRV_Set_REG_TC_DBG_AutoAlgEnBits(pstSensor->m_pI2cClient, 3, false);
+                  pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_WB_DAYLIGHT);
+            }
             break;
         case CamWB_Incandescent:
-		pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_WB_INCANDESCENT);
+            {
+                  CAMDRV_Set_REG_TC_DBG_AutoAlgEnBits(pstSensor->m_pI2cClient, 3, false);
+                  pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_WB_INCANDESCENT);
+            }
             break;
         case CamWB_DaylightFluorescent:
-		pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_WB_FLUORESCENT);
+            {
+                  CAMDRV_Set_REG_TC_DBG_AutoAlgEnBits(pstSensor->m_pI2cClient, 3, false);
+                  pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_WB_FLUORESCENT);
+            }
             break;
         case CamWB_Cloudy:
-		pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_WB_CLOUDY);
+            {
+                  CAMDRV_Set_REG_TC_DBG_AutoAlgEnBits(pstSensor->m_pI2cClient, 3, false);
+                  pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_WB_CLOUDY);
+            }
             break;
         default:
             wb_mode = CamWB_Auto;
@@ -1734,7 +2040,7 @@ HAL_CAM_Result_en_t CAMDRV_SetMeteringType(CamMeteringType_t type,
         struct stCamacqSensor_t* pstSensor = NULL;
 		
         printk(KERN_ERR"CAMDRV_SetMeteringType() called,ae_mode = 0x%08x Drv_ME= 0x%08x  \r\n",type,Drv_ME);
-#if 0 
+#if 1
        if(((gv_ForceSetSensor==NORMAL_SET)&&(type==Drv_ME))||(gv_ForceSetSensor==FORCELY_SKIP))	
        {
 		Drv_ME = type;
@@ -1818,12 +2124,27 @@ HAL_CAM_Result_en_t CAMDRV_SetFlashMode(FlashLedState_t effect,
 					CamSensorSelect_t sensor)
 {
 	HAL_CAM_Result_en_t result = HAL_CAM_SUCCESS;
-	printk(KERN_ERR"CAMDRV_SetFlashMode() called Empty!!,effect = %d\r\n",effect);
-	
-	if (sCamI2cStatus != HAL_CAM_SUCCESS) {
-		printk(KERN_INFO"CAMDRV_SetFlashMode(): Error[%d] \r\n",sCamI2cStatus);
-		result = sCamI2cStatus;
+
+	printk(KERN_INFO"CAMDRV_SetFlashMode() called, effect= %d  Flash_Mode= %d \r\n", effect, stv0986_sys_flash_mode);
+
+	if (effect != stv0986_sys_flash_mode)	
+	{
+		if (effect == Torch_On)
+		{
+			stv0986_sys_flash_mode = effect;
+			
+			CAMDRV_SetFlash(MOVIE_FLASH);
+			printk(KERN_INFO"  Turn On Flash_Torch \r\n");
+		}
+		else if ( (stv0986_sys_flash_mode == Torch_On) && (effect == Flash_Off) )
+		{
+			CAMDRV_SetFlash(FLASH_OFF);
+			printk(KERN_INFO"  Turn Off Flash_Torch \r\n");
+		}
+			
+		stv0986_sys_flash_mode = effect;
 	}
+		
     return result;
 }
 
@@ -1838,7 +2159,7 @@ HAL_CAM_Result_en_t CAMDRV_SetFlashMode(FlashLedState_t effect,
 HAL_CAM_Result_en_t CAMDRV_SetFocusMode(CamFocusControlMode_t effect,
 					CamSensorSelect_t sensor)
 {
-	printk(KERN_ERR"CAMDRV_SetFocusMode() called Empty!!, effect = %d \r\n",effect);
+	printk(KERN_ERR"CAMDRV_SetFocusMode() called!!, effect = %d \r\n",effect);
 	HAL_CAM_Result_en_t result = HAL_CAM_SUCCESS;
 
 	if (sCamI2cStatus != HAL_CAM_SUCCESS) {
@@ -1846,14 +2167,445 @@ HAL_CAM_Result_en_t CAMDRV_SetFocusMode(CamFocusControlMode_t effect,
 			 sCamI2cStatus);
 		result = sCamI2cStatus;
 	}
+
+
+	if(Drv_FocusMode != EXT_CFG_AF_SET_NORMAL && 
+		Drv_FocusMode != EXT_CFG_AF_SET_MACRO)
+	{
+		printk(KERN_ERR"CAMDRV_SetFocusMode() if first entered to camera preview\r\n");
+		Drv_FocusMode = EXT_CFG_AF_SET_NORMAL;
+		return result;
+	}
+	
+	if(effect == CamFocusControlAuto)
+	{
+            if (Drv_FocusMode == EXT_CFG_AF_SET_NORMAL)
+                  return result;
+		Drv_FocusMode = EXT_CFG_AF_SET_NORMAL;
+		CAMDRV_SetAF(EXT_CFG_AF_SET_NORMAL);
+	}
+	else if(effect == CamFocusControlMacro)
+	{
+            if (Drv_FocusMode == EXT_CFG_AF_SET_MACRO)
+                  return result;
+		Drv_FocusMode = EXT_CFG_AF_SET_MACRO;
+		CAMDRV_SetAF(EXT_CFG_AF_SET_MACRO);
+	}
+	printk("[CAM] Set Focus Mode : 0x%04x = %d \n", effect, Drv_FocusMode);
+
 	return result;
+}
+
+HAL_CAM_Result_en_t CAMDRV_SetFlashForVideo(bool bFlashOn, CamSensorSelect_t sensor)
+{
+	HAL_CAM_Result_en_t result = HAL_CAM_SUCCESS;
+	U16 currentLux = 0;
+
+	if(Drv_Mode != CamVideo || stv0986_sys_flash_mode == Flash_Off)
+	{
+//		printk(KERN_INFO"Do not active flash [Drv_Mode: %d, Flash_Mode: %d] \n", Drv_Mode, stv0986_sys_flash_mode);
+		return HAL_CAM_SUCCESS;
+	}
+	printk(KERN_INFO"%s(),  bFlashOn: %d, flash_mode : %d \r\n", __FUNCTION__, bFlashOn, stv0986_sys_flash_mode);
+	
+	if(bFlashOn == TRUE)
+	{
+		if(stv0986_sys_flash_mode == FlashLight_Auto)
+		{
+			currentLux = CAMDRV_GetCurrentLux(sensor);
+			if(currentLux < 0x0032)
+				CAMDRV_SetFlash(MOVIE_FLASH);
+		}
+		else
+			CAMDRV_SetFlash(MOVIE_FLASH);
+	}
+	else
+		CAMDRV_SetFlash(FLASH_OFF);
+
+	return result;
+}
+
+HAL_CAM_Result_en_t CAMDRV_SetFlash(int lux_val)
+{
+	int i = 0;
+	struct stCamacqSensorManager_t* pstSensorManager = NULL;
+	struct stCamacqSensor_t* pstSensor = NULL;
+
+	printk(KERN_ERR"%s(): , lux_val : %d, flash_mode : %d \r\n", __FUNCTION__, lux_val, stv0986_sys_flash_mode );
+
+	if(stv0986_sys_flash_mode == Flash_Off)
+		return 0;
+
+	pstSensorManager = GetCamacqSensorManager();
+	if( pstSensorManager == NULL )
+	{
+		printk(KERN_ERR"pstSensorManager is NULL \r\n");
+		return HAL_CAM_ERROR_OTHERS;
+	}
+	 
+	pstSensor = pstSensorManager->GetSensor( pstSensorManager, CamSensorPrimary );
+	if( pstSensor == NULL )
+	{
+		printk(KERN_ERR"pstSensor is NULL \r\n");
+		return HAL_CAM_ERROR_OTHERS;
+	}
+
+	 // initailize falsh IC
+	gpio_set_value(CAM_FLASH_MODE,0);
+	gpio_set_value(CAM_FLASH_EN,0);
+	mdelay(1); // to enter a shutdown mode
+	
+	// set to flash mode
+	if(lux_val>16)
+	{
+		pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_FLASH_ON);
+		//CamacqExtDirectlyWriteI2cLists(pstSensor->m_pI2cClient, reg_main_flash_on,0 );
+		gpio_set_value(CAM_FLASH_EN,1);
+		gFlashForExif = true;
+	}
+	else if(lux_val == MACRO_FLASH)
+	{
+		// set to movie mode
+		pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_FLASH_ON);
+		//CamacqExtDirectlyWriteI2cLists(pstSensor->m_pI2cClient, reg_main_flash_on,0 );
+		for(i=0;i<lux_val;i++)
+		{
+			udelay(1);
+			gpio_set_value(CAM_FLASH_MODE,1);
+			udelay(1);
+			gpio_set_value(CAM_FLASH_MODE,0);
+		}
+		gpio_set_value(CAM_FLASH_MODE,1); //value set
+		gFlashForExif = true;
+	}
+	else if(lux_val > 0 &&  lux_val<=16)
+	{
+		/* set to movie mode */
+		pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_PRE_FLASH_ON);
+		//CamacqExtDirectlyWriteI2cLists(pstSensor->m_pI2cClient, reg_main_pre_flash_on,0 );
+		for(i=0;i<lux_val;i++)
+		{
+			udelay(1);
+			gpio_set_value(CAM_FLASH_MODE,1);
+			udelay(1);
+			gpio_set_value(CAM_FLASH_MODE,0);
+		}
+		gpio_set_value(CAM_FLASH_MODE,1); //value set
+	}
+	
+	stv0986_sys_flash_state = lux_val;
+
+	/* setting a sensor #2*/
+	if(lux_val == PRE_FLASH_OFF)
+		pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_PRE_FLASH_OFF);
+	else if(lux_val == FLASH_OFF && Drv_AFCanceled == 1)
+		pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_PRE_FLASH_OFF);
+	else if(lux_val == FLASH_OFF && Drv_AFCanceled == 0)
+	{
+		pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_FLASH_OFF);
+		if(Drv_LowCapOn == 1)
+		{
+			pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_LOW_CAP_OFF);
+		}
+	}
+	
+	return 0;
+}
+
+U16 CAMDRV_GetCurrentLux(CamSensorSelect_t sensor)
+{ 
+	//HAL_CAM_Result_en_t result = HAL_CAM_SUCCESS;
+	struct stCamacqSensorManager_t* pstSensorManager = NULL;
+	struct stCamacqSensor_t* pstSensor = NULL;
+
+	U8 AddrValueForRead1[4] = {0x00, 0x2C, 0x70, 0x00};
+	U8 AddrValueForRead2[4] = {0x00, 0x2E, 0x2C, 0x18};
+	U8 readValue1[2] = {'\0', };
+	U8 readValue2[2] = {'\0', };
+
+	U16 currentLux;
+	
+	pstSensorManager = GetCamacqSensorManager();
+	if( pstSensorManager == NULL )
+	{
+		printk(KERN_ERR"pstSensorManager is NULL \r\n");
+		//return HAL_CAM_ERROR_OTHERS;
+	}
+
+	pstSensor = pstSensorManager->GetSensor( pstSensorManager, sensor );
+	if( pstSensor == NULL )
+	{
+		printk(KERN_ERR"pstSensor is NULL \r\n");
+		//return HAL_CAM_ERROR_OTHERS;
+	}
+
+	CamacqExtWriteI2c(	pstSensor->m_pI2cClient, AddrValueForRead1, 4);
+	CamacqExtWriteI2c(	pstSensor->m_pI2cClient, AddrValueForRead2, 4);
+	CamacqExtReadI2c(   pstSensor->m_pI2cClient, 0x0F12, 2, readValue1, 2);
+	CamacqExtReadI2c(   pstSensor->m_pI2cClient, 0x0F12, 2, readValue2, 2);
+	
+	currentLux = (readValue2[0]<<24)|(readValue2[1]<<16)|(readValue1[0]<<8)|readValue1[1];
+	printk(KERN_INFO"%s() : currentLux=0x%x \r\n", __FUNCTION__, currentLux);
+	
+	return currentLux;
+}	
+
+HAL_CAM_Result_en_t CAMDRV_SetAF(char value)
+{
+	HAL_CAM_Result_en_t result = HAL_CAM_SUCCESS;
+	struct stCamacqSensorManager_t* pstSensorManager = NULL;
+	struct stCamacqSensor_t* pstSensor = NULL;
+
+	int val = 0, ret = 0;
+	static int pre_flash_on = 0;
+	U8 ucAFState = 0;
+	U16 usReadAddr = 0; 
+	U16 currentLux = 0;
+	U32 sensor= 0;//Rear Camera
+
+	U8 AddrValueForRead1[4] = {0x00, 0x2C, 0x70, 0x00};
+	U8 AddrValueForRead2[4] = {0x00, 0x2E, 0x2E, 0xEE};
+	U8 AddrValueForRead3[4] = {0x00, 0x2E, 0x22, 0x07};
+	U8 AddrValueForRead4[4] = {0x00, 0x2E, 0x2C, 0x74};
+
+	U8 AddrValueForWrite1[4] = {0x00, 0x28, 0x70, 0x00};
+	U8 AddrValueForWrite2[4] = {0x00, 0x2A, 0x05, 0x7C};
+	U8 AddrValueForWrite3[4] = {0x0F, 0x12, 0x00, 0x00};
+	U8 AddrValueForWrite4[4] = {0x0F, 0x12, 0x00, 0x02};
+
+	U8 readValue1[2] = {'\0', };
+
+//      printk(" CAMDRV_SetAF : START \n");
+
+	pstSensorManager = GetCamacqSensorManager();
+	if( pstSensorManager == NULL )
+	{
+		printk(KERN_ERR"pstSensorManager is NULL \r\n");
+		return HAL_CAM_ERROR_OTHERS;
+	}
+
+	pstSensor = pstSensorManager->GetSensor( pstSensorManager, sensor );
+	if( pstSensor == NULL )
+	{
+		printk(KERN_ERR"pstSensor is NULL \r\n");
+		return HAL_CAM_ERROR_OTHERS;
+	}
+	switch(value)
+	{
+		case EXT_CFG_AF_CHECK_STATUS :
+
+      CamacqExtWriteI2c(	pstSensor->m_pI2cClient, AddrValueForRead1, 4);
+      CamacqExtWriteI2c(	pstSensor->m_pI2cClient, AddrValueForRead2, 4);
+      CamacqExtReadI2c(   pstSensor->m_pI2cClient, 0x0F12, 2, readValue1, 2);
+
+            //      printk("%s EXT_CFG_AF_CHECK_STATUS : readValue1[0] = 0x%x, readValue1[1] = 0x%x\n",__func__, readValue1[0], readValue1[1]);
+
+			switch(readValue1[1])
+			{
+				case 1:
+					printk("%s : EXT_CFG_AF_CHECK_STATUS -EXT_CFG_AF_PROGRESS \n", __func__);
+               mAFStatus = EXT_CFG_AF_PROGRESS;
+               ret = EXT_CFG_AF_PROGRESS;
+				break;
+				case 2:
+					printk("%s : EXT_CFG_AF_CHECK_STATUS -EXT_CFG_AF_SUCCESS \n", __func__);
+               mAFStatus = EXT_CFG_AF_SUCCESS;
+					ret = EXT_CFG_AF_SUCCESS;
+				break;
+				default:
+					printk("%s : EXT_CFG_AF_CHECK_STATUS -EXT_CFG_AF_LOWCONF \n", __func__);
+               mAFStatus = EXT_CFG_AF_LOWCONF;
+					ret = EXT_CFG_AF_LOWCONF;
+				break;
+			}
+		break;
+		case EXT_CFG_AF_CHECK_2nd_STATUS :
+
+      CamacqExtWriteI2c(	pstSensor->m_pI2cClient, AddrValueForRead1, 4);
+      CamacqExtWriteI2c(	pstSensor->m_pI2cClient, AddrValueForRead3, 4);
+      CamacqExtReadI2c(   pstSensor->m_pI2cClient, 0x0F12, 2, readValue1, 2);
+
+      printk("%s EXT_CFG_AF_CHECK_2nd_STATUS : readValue1[0] = 0x%x, readValue1[1] = 0x%x\n",__func__, readValue1[0], readValue1[1]);
+
+			switch(readValue1[1]&0xFF)
+			{
+				case 1:
+					printk("%s : EXT_CFG_AF_CHECK_2nd_STATUS -EXT_CFG_AF_PROGRESS \n", __func__);
+               mAFStatus = EXT_CFG_AF_PROGRESS;
+					ret = EXT_CFG_AF_PROGRESS;
+				break;
+				case 0:
+					printk("%s : EXT_CFG_AF_CHECK_2nd_STATUS -EXT_CFG_AF_SUCCESS \n", __func__);
+               mAFStatus = EXT_CFG_AF_SUCCESS;
+					ret = EXT_CFG_AF_SUCCESS;
+				break;
+				default:
+					printk("%s : EXT_CFG_AF_CHECK_2nd_STATUS -EXT_CFG_AF_PROGRESS \n", __func__);
+               mAFStatus = EXT_CFG_AF_PROGRESS;
+					ret = EXT_CFG_AF_PROGRESS;
+				break;
+			}
+		break;
+		case EXT_CFG_AF_CHECK_AE_STATUS :
+			{
+      CamacqExtWriteI2c(	pstSensor->m_pI2cClient, AddrValueForRead1, 4);
+      CamacqExtWriteI2c(	pstSensor->m_pI2cClient, AddrValueForRead4, 4);
+      CamacqExtReadI2c(   pstSensor->m_pI2cClient, 0x0F12, 2, readValue1, 2);
+      printk("%s EXT_CFG_AF_CHECK_AE_STATUS : readValue1[0] = 0x%x, readValue1[1] = 0x%x\n",__func__, readValue1[0], readValue1[1]);
+
+   			switch(readValue1[1])
+				{
+					case 1:
+						printk("%s : EXT_CFG_AF_CHECK_AE_STATUS -EXT_CFG_AE_STABLE \n", __func__);
+                  mAFStatus = EXT_CFG_AE_STABLE;
+						ret = EXT_CFG_AE_STABLE;
+					break;
+					default:
+						printk("%s : EXT_CFG_AF_CHECK_AE_STATUS -EXT_CFG_AE_UNSTABLE \n", __func__);
+                  mAFStatus = EXT_CFG_AE_UNSTABLE;
+						ret = EXT_CFG_AE_UNSTABLE;
+					break;
+				}
+			}
+		break;
+		
+		case EXT_CFG_AF_SET_NORMAL :
+			printk("%s : EXT_CFG_AF_SET_NORMAL \n", __func__);
+		   pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SET_AF_NORMAL_MODE_1);
+		   if(Drv_Scene == CamSceneMode_Night)	mdelay(250);
+		   else mdelay(200);
+		   pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SET_AF_NORMAL_MODE_2);
+		   if(Drv_Scene == CamSceneMode_Night)	mdelay(250);
+		   else mdelay(200);
+		   if(Drv_Scene != CamSceneMode_Night)	
+		   pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SET_AF_NORMAL_MODE_3);
+		break;
+		
+		case EXT_CFG_AF_SET_MACRO :
+			printk("%s : EXT_CFG_AF_SET_MACRO \n", __func__);
+		   pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SET_AF_MACRO_MODE_1);
+		   if(Drv_Scene == CamSceneMode_Night)	mdelay(250);
+		   else mdelay(100);
+		   pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SET_AF_MACRO_MODE_2);         
+		   if(Drv_Scene == CamSceneMode_Night)	mdelay(250);
+		   else mdelay(100);
+		   if(Drv_Scene != CamSceneMode_Night)	
+		   pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SET_AF_MACRO_MODE_3);         
+		   mdelay(200);
+		break;
+		
+		case EXT_CFG_AF_OFF :
+			Drv_AFCanceled = TRUE;
+			printk("%s : EXT_CFG_AF_OFF (AFmode:%d, AFCanceled:%d)\n", __func__, Drv_FocusMode, Drv_AFCanceled);
+			if(Drv_FocusMode == EXT_CFG_AF_SET_NORMAL)
+			{
+				pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SET_AF_NORMAL_MODE_1);
+				if(Drv_Scene == CamSceneMode_Night)	mdelay(250);
+				else mdelay(100);
+				pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SET_AF_NORMAL_MODE_2);
+				if(Drv_Scene == CamSceneMode_Night)	mdelay(250);
+				else mdelay(100);
+				pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SET_AF_NORMAL_MODE_3);
+			}
+			else
+			{
+				pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SET_AF_MACRO_MODE_1);
+				if(Drv_Scene == CamSceneMode_Night)	mdelay(250);
+				else mdelay(100);
+				pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SET_AF_MACRO_MODE_2);
+				if(Drv_Scene == CamSceneMode_Night)	mdelay(250);
+				else mdelay(100);
+				pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SET_AF_MACRO_MODE_3);
+			}
+		break;
+
+		case EXT_CFG_AF_DO :
+			Drv_AFCanceled = FALSE;
+			printk("%s : EXT_CFG_AF_DO (AFCanceled:%d) \n", __func__, Drv_AFCanceled);
+			pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SINGLE_AF_START);
+			break;
+		
+		case EXT_CFG_AF_SET_AE_FOR_FLASH :
+			printk("%s : EXT_CFG_AF_SET_AE_FOR_FLASH (FlashMode: %d) \n", __func__, stv0986_sys_flash_mode);
+			currentLux = CAMDRV_GetCurrentLux(sensor);
+			if(stv0986_sys_flash_mode != Flash_Off)
+			{
+				if(stv0986_sys_flash_mode == FlashLight_Auto)
+				{
+					if(currentLux > 0x0032) break;
+				}
+				CamacqExtWriteI2c(	pstSensor->m_pI2cClient, AddrValueForWrite1, 4);
+				CamacqExtWriteI2c(	pstSensor->m_pI2cClient, AddrValueForWrite2, 4);
+				CamacqExtWriteI2c(	pstSensor->m_pI2cClient, AddrValueForWrite3, 4);
+
+				CAMDRV_SetFlash(PRE_FLASH);
+				mdelay(500);
+				pre_flash_on = 1;
+			}
+			break;
+		
+		case EXT_CFG_AF_BACK_AE_FOR_FLASH :
+			printk("%s : EXT_CFG_AF_BACK_AE_FOR_FLASH \n", __func__);
+			if(pre_flash_on)
+			{
+				CamacqExtWriteI2c(	pstSensor->m_pI2cClient, AddrValueForWrite1, 4);
+				CamacqExtWriteI2c(	pstSensor->m_pI2cClient, AddrValueForWrite2, 4);
+				CamacqExtWriteI2c(	pstSensor->m_pI2cClient, AddrValueForWrite4, 4);
+			}
+			CAMDRV_SetFlash(PRE_FLASH_OFF);
+			pre_flash_on = 0;
+			break;
+		
+		case EXT_CFG_AF_POWEROFF :
+			printk("%s : EXT_CFG_AF_POWEROFF \n", __func__);
+			pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SET_AF_NORMAL_MODE_1);
+			if(Drv_Scene == CamSceneMode_Night)	mdelay(250);
+			else mdelay(100);
+			pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SET_AF_NORMAL_MODE_2);
+			if(Drv_Scene == CamSceneMode_Night)	mdelay(250);
+			else mdelay(100);
+			break;
+			
+		default :
+			printk("[S5K4ECGX] Unexpected AF command : %d\n",value);
+		break;
+	}	
+	return ret;
 }
 
 HAL_CAM_Result_en_t CAMDRV_TurnOffAF()
 {
 	HAL_CAM_Result_en_t result = HAL_CAM_SUCCESS;
-	printk(KERN_ERR"CAMDRV_TurnOffAF() called Empty!! \r\n");
+	U32 sensor= 0;//Rear Camera
+	struct stCamacqSensorManager_t* pstSensorManager = NULL;
+	struct stCamacqSensor_t* pstSensor = NULL;
+   
+//	printk(KERN_ERR"hunny : CAMDRV_TurnOffAF() called Empty!! \r\n");
+	printk(KERN_ERR"hunny : CAMDRV_TurnOffAF() AE/AWB Control \r\n");
+
+      if (Drv_AECanceled == TRUE)
+            return result;
+	pstSensorManager = GetCamacqSensorManager();
+	if( pstSensorManager == NULL )
+	{
+		printk(KERN_ERR"pstSensorManager is NULL \r\n");
+		return HAL_CAM_ERROR_OTHERS;
+	}
 	
+	pstSensor = pstSensorManager->GetSensor( pstSensorManager, sensor );
+	if( pstSensor == NULL )
+	{
+		printk(KERN_ERR"pstSensor is NULL \r\n");
+		return HAL_CAM_ERROR_OTHERS;
+	}
+
+	pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_AE_UNLOCK);
+
+	 if ((Drv_Scene != CamSceneMode_Auto && Drv_Scene != CamSceneMode_Sunset && Drv_Scene != CamSceneMode_Dusk_Dawn && Drv_Scene != CamSceneMode_Candlelight)
+               || (Drv_Scene == CamSceneMode_Auto && Drv_WB == CamWB_Auto))	
+	pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_AWB_UNLOCK);
+      Drv_AECanceled = TRUE;
+
 	if (sCamI2cStatus != HAL_CAM_SUCCESS) {
 		printk(KERN_INFO"CAMDRV_TurnOnAF(): Error[%d] \r\n",
 			 sCamI2cStatus);
@@ -1862,10 +2614,128 @@ HAL_CAM_Result_en_t CAMDRV_TurnOffAF()
 	return result;
 }
 
+HAL_CAM_Result_en_t CAMDRV_CancelAF()
+{
+	printk("%s\n", __func__);
+	CAMDRV_SetAF(EXT_CFG_AF_OFF);
+	
+	gAFCancel=1;
+	return 0;
+}
+
 HAL_CAM_Result_en_t CAMDRV_TurnOnAF()
 {
 	HAL_CAM_Result_en_t result = HAL_CAM_SUCCESS;
-	printk(KERN_ERR"CAMDRV_TurnOnAF() called Empty!! \r\n");
+   U32 sensor= 0;//Rear Camera
+
+	struct stCamacqSensorManager_t* pstSensorManager = NULL;
+	struct stCamacqSensor_t* pstSensor = NULL;
+    gAFCancel=0;
+
+	pstSensorManager = GetCamacqSensorManager();
+	if( pstSensorManager == NULL )
+	{
+		printk(KERN_ERR"pstSensorManager is NULL \r\n");
+		return HAL_CAM_ERROR_OTHERS;
+	}
+	
+	pstSensor = pstSensorManager->GetSensor( pstSensorManager, sensor );
+	if( pstSensor == NULL )
+	{
+		printk(KERN_ERR"pstSensor is NULL \r\n");
+		return HAL_CAM_ERROR_OTHERS;
+	}
+
+                /* AE Stable check for low lux env and control PRE_FLASH (see s5k4ecgx driver) */
+
+                int i=0;
+                CAMDRV_SetAF(EXT_CFG_AF_SET_AE_FOR_FLASH);
+                do
+                {
+                    printk(" CAMDRV_TurnOnAF : EXT_CFG_AF_CHECK_AE_STATUS\n");                
+                    CAMDRV_SetAF(EXT_CFG_AF_CHECK_AE_STATUS);
+                    if (mAFStatus == EXT_CFG_AE_STABLE)break;
+			 		if (Drv_Scene ==CamSceneMode_Night) msleep(250);// skip 1 frames for AF
+                    else msleep(100); // skip 1 frames for AF
+                    i++;
+                }
+                while (i<7);
+
+                printk(" AWB_AE_LOCK\n");
+
+	pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_AE_LOCK);
+	pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_AWB_LOCK);
+      Drv_AECanceled = FALSE;
+
+                /* Start AF */
+                CAMDRV_SetAF(EXT_CFG_AF_DO);
+			   if (Drv_Scene ==CamSceneMode_Night) msleep(500);// skip 1 frames for AF
+                else msleep(200); // skip 1 frames for AF
+                
+                CAMDRV_SetAF(EXT_CFG_AF_CHECK_STATUS);
+
+                for (i=0; i<100; i++) {
+                    if ( ( mAFStatus == EXT_CFG_AF_SUCCESS) || (mAFStatus==EXT_CFG_AF_CANCELED)||(gAFCancel==1)) {
+                        if (mAFStatus == EXT_CFG_AF_SUCCESS)
+                            printk(" EXT_CFG_AF_SUCCESS! mAFStatus : %x\n ", mAFStatus);
+                        else if (mAFStatus == EXT_CFG_AF_CANCELED)
+                       	{
+                            printk(" EXT_CFG_AF_CANCELED! mAFStatus : %x\n ", mAFStatus);
+						    mAFStatus = EXT_CFG_AF_CANCELED;							
+                       	}
+                        else//mAFCancel
+                       	{
+                            printk(" mAFCancel: %d\n", 1);
+							mAFStatus = EXT_CFG_AF_CANCELED;
+                       	}
+                        break;
+                    } else if ( mAFStatus == EXT_CFG_AF_LOWCONF ) {
+                        printk(" EXT_CFG_AF_LOWCONF, Fail! mAFStatus : %x \n", mAFStatus);
+                        break;
+                    } else {
+                        printk(" NOT YET! mAFStatus :%x\n", mAFStatus);
+                  if (Drv_Scene ==CamSceneMode_Night) msleep(250);// skip 1 frames for AF
+                  else msleep(100); // skip 1 frames for AF
+                        CAMDRV_SetAF(EXT_CFG_AF_CHECK_STATUS);
+                    }
+                }
+
+                /* Time out check */
+                if (i == 100) {
+                    printk(" EXT_CFG_AF_CHECK_STATUS TIME OUT!\n");
+                    mAFStatus = EXT_CFG_AF_TIMEOUT;
+                }
+
+                /* AF result check */
+                switch (mAFStatus)
+                {
+                    case EXT_CFG_AF_SUCCESS:
+                        i = 0;
+                        /* start 2nd search for s5k4ecgx */
+                        while (i<100) 
+                        {
+                            if (Drv_Scene ==CamSceneMode_Night) msleep(250);// skip 1 frames for AF
+		    				  else msleep(100); // skip 1 frames for AF
+                          CAMDRV_SetAF(EXT_CFG_AF_CHECK_2nd_STATUS);
+                            if (mAFStatus== EXT_CFG_AF_SUCCESS)break;
+                            i++;
+                        }
+//                        status = 1;
+                        break;
+                    case EXT_CFG_AF_LOWCONF:
+                        printk(" AF Fail\n");
+//                        status = 0;
+						result = 1; 
+                        break;
+                    default:
+                        if ( gAFCancel) result = 2; // Cancel == 2
+                        else result = 1;//TIMEOUT or fail..etc // 0 == fail AF on App
+                        break;
+                }
+//                if( !mSamsungCamera )native_ext_sensor_config(EXT_CFG_AE_AWB_CONTROL, 0, EXT_CFG_AE_UNLOCK);
+                /* AE setting value set to original value */
+                CAMDRV_SetAF(EXT_CFG_AF_BACK_AE_FOR_FLASH);
+
 	if (sCamI2cStatus != HAL_CAM_SUCCESS) {
 		printk(KERN_INFO"CAMDRV_TurnOnAF(): Error[%d] \r\n",
 			 sCamI2cStatus);
@@ -1884,7 +2754,7 @@ HAL_CAM_Result_en_t CAMDRV_TurnOnAF()
 HAL_CAM_Result_en_t CAMDRV_SetJpegQuality(CamJpegQuality_t effect,
 					  CamSensorSelect_t sensor)
 {
-	printk(KERN_INFO"CAMDRV_SetJpegQuality() called, Empty \r\n");
+	printk(KERN_INFO"CAMDRV_SetJpegQuality() called, effect[%d] \r\n",effect);
 	HAL_CAM_Result_en_t result = HAL_CAM_SUCCESS;
 
 	result = CAMDRV_SetImageQuality(effect,sensor);
@@ -1906,13 +2776,14 @@ HAL_CAM_Result_en_t CAMDRV_SetDigitalEffect(CamDigEffect_t effect,
 	struct stCamacqSensorManager_t* pstSensorManager = NULL;
 	struct stCamacqSensor_t* pstSensor = NULL;
 
-	printk(KERN_ERR"CAMDRV_SetDigitalEffect() called,effect = %d Drv_Effect=%d \r\n",effect,Drv_Effect);
+      printk(KERN_ERR"CAMDRV_SetDigitalEffect() called,effect = 0x%08x Drv_Effect= 0x%08x \r\n", effect, Drv_Effect);
 
-       if(((effect==Drv_Effect)||(Drv_Scene>CamSceneMode_Auto))&&(gv_ForceSetSensor==FALSE))	
-       {
-		printk(KERN_ERR"Do not set effect Drv_Scene= %d \r\n",Drv_Scene);
-		return HAL_CAM_SUCCESS;
-	}	   	
+      if (((gv_ForceSetSensor == NORMAL_SET) && (effect == Drv_Effect)) || (gv_ForceSetSensor == FORCELY_SKIP))
+      {
+            Drv_Effect = effect ;
+//            printk(KERN_ERR"Do not set effect Drv_Effect= %d \r\n", Drv_Effect);
+            return HAL_CAM_SUCCESS;
+      }
 	
 	pstSensorManager = GetCamacqSensorManager();
 	if( pstSensorManager == NULL )
@@ -1968,13 +2839,14 @@ HAL_CAM_Result_en_t CAMDRV_SetBrightness(CamBrightnessLevel_t brightness, CamSen
 	struct stCamacqSensorManager_t* pstSensorManager = NULL;
 	struct stCamacqSensor_t* pstSensor = NULL;
 
-	printk(KERN_ERR"CAMDRV_SetBrightness() called,brightness = %d Drv_Brightness=%d \r\n",brightness,Drv_Brightness);
+      printk(KERN_ERR"CAMDRV_SetBrightness() called,brightness = %x Drv_Brightness=%x \r\n", brightness, Drv_Brightness);
 
-       if(((brightness==Drv_Brightness)||(Drv_Scene>CamSceneMode_Auto))&&(gv_ForceSetSensor==FALSE))		
-       {
-		printk(KERN_ERR"Do not set brightness Drv_Scene= %d \r\n",Drv_Scene);
-		return HAL_CAM_SUCCESS;
-	}	   	
+      if (((gv_ForceSetSensor == NORMAL_SET) && (brightness == Drv_Brightness)) || (gv_ForceSetSensor == FORCELY_SKIP))
+      {
+            Drv_Brightness = brightness ;
+//            printk(KERN_ERR"Do not set brightness Drv_Brightness= %d \r\n", Drv_Brightness);
+            return HAL_CAM_SUCCESS;
+      }
 	
 	pstSensorManager = GetCamacqSensorManager();
 	if( pstSensorManager == NULL )
@@ -2000,7 +2872,7 @@ HAL_CAM_Result_en_t CAMDRV_SetBrightness(CamBrightnessLevel_t brightness, CamSen
              break;
              
              case CamBrightnessLevel_2:
-                 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_BRIGHTNESS_1);
+            pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_BRIGHTNESS_2);
              break;
              
              case CamBrightnessLevel_3:
@@ -2059,7 +2931,7 @@ HAL_CAM_Result_en_t CAMDRV_SetJpegsize( CamImageSize_t stills_resolution,CamSens
        printk(KERN_ERR"CAMDRV_SetJpegsize() called,stills_resolution = 0x%08x Drv_Size= 0x%08x\r\n",stills_resolution,Drv_Size);
        if(stills_resolution==Drv_Size)	
        {
-		printk(KERN_ERR"Do not set Jpegsize \r\n");
+//            printk(KERN_ERR"Do not set Jpegsize \r\n");
 		Drv_Size = stills_resolution;
 		return HAL_CAM_SUCCESS;
 	}			
@@ -2079,29 +2951,29 @@ HAL_CAM_Result_en_t CAMDRV_SetJpegsize( CamImageSize_t stills_resolution,CamSens
 	}
     switch( stills_resolution )
     {
-        case CamImageSize_QSXGA:
-		//pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SIZE_3M);
-	       CamacqExtDirectlyWriteI2cLists(pstSensor->m_pI2cClient, reg_main_jpeg_5m,0 );
+        case CamImageSize_QSXGA: // 2560x1920
+		pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SIZE_5M);
+	       //CamacqExtDirectlyWriteI2cLists(pstSensor->m_pI2cClient, reg_main_jpeg_5m,0 );
             break;
-        case CamImageSize_QXGA:
-		//pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SIZE_3M);
-	       CamacqExtDirectlyWriteI2cLists(pstSensor->m_pI2cClient, reg_main_jpeg_3m,0 );
+        case CamImageSize_QXGA: // 2048x1536
+		pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SIZE_3M);
+	      // CamacqExtDirectlyWriteI2cLists(pstSensor->m_pI2cClient, reg_main_jpeg_3m,0 );
             break;
-        case CamImageSize_UXGA:
-		//pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SIZE_2M);
-	       CamacqExtDirectlyWriteI2cLists(pstSensor->m_pI2cClient, reg_main_jpeg_2m,0 );
+        case CamImageSize_UXGA: // 1600x1200
+		pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SIZE_2M);
+	      // CamacqExtDirectlyWriteI2cLists(pstSensor->m_pI2cClient, reg_main_jpeg_2m,0 );
             break;
-        case CamImageSize_4VGA:
-		//pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SIZE_1M);
-	       CamacqExtDirectlyWriteI2cLists(pstSensor->m_pI2cClient, reg_main_jpeg_1m,0 );
+        case CamImageSize_4VGA: // 1280x960
+		pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SIZE_1M);
+	      // CamacqExtDirectlyWriteI2cLists(pstSensor->m_pI2cClient, reg_main_jpeg_1m,0 );
             break;
-        case CamImageSize_VGA:
-		//pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SIZE_VGA);
-	       CamacqExtDirectlyWriteI2cLists(pstSensor->m_pI2cClient, reg_main_jpeg_vga,0 );		
+        case CamImageSize_VGA: // 640x480
+		pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SIZE_VGA);
+	      // CamacqExtDirectlyWriteI2cLists(pstSensor->m_pI2cClient, reg_main_jpeg_vga,0 );		
             break;			
         case CamImageSize_QVGA:
-		//pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SIZE_QVGA);
-	       CamacqExtDirectlyWriteI2cLists(pstSensor->m_pI2cClient, reg_main_jpeg_qvga,0 );		
+		pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SIZE_QVGA);
+	      // CamacqExtDirectlyWriteI2cLists(pstSensor->m_pI2cClient, reg_main_jpeg_qvga,0 );		
             break;			
 			
         default:
@@ -2134,8 +3006,13 @@ HAL_CAM_Result_en_t CAMDRV_SetSaturation(CamSaturation_t saturation, CamSensorSe
 	struct stCamacqSensorManager_t* pstSensorManager = NULL;
 	struct stCamacqSensor_t* pstSensor = NULL;
 
-	printk(KERN_ERR"CAMDRV_SetSaturation() called,saturation = %d \r\n",saturation);
-	
+      printk(KERN_ERR"CAMDRV_SetSaturation() called,saturation = 0x%08x Drv_Saturation= 0x%08x\r\n", saturation, Drv_Saturation);
+
+      if (saturation == Drv_Saturation)
+      {
+//            printk(KERN_ERR"Do not set saturation \r\n");
+            return HAL_CAM_SUCCESS;
+      }
 	pstSensorManager = GetCamacqSensorManager();
 	if( pstSensorManager == NULL )
 	{
@@ -2180,6 +3057,7 @@ HAL_CAM_Result_en_t CAMDRV_SetSaturation(CamSaturation_t saturation, CamSensorSe
 		printk(KERN_INFO"CAMDRV_SetSaturation(): Error[%d] \r\n", sCamI2cStatus);
 		result = sCamI2cStatus;
 	}
+      Drv_Saturation = saturation;
     return result;
 }
 
@@ -2202,8 +3080,13 @@ HAL_CAM_Result_en_t CAMDRV_SetSharpness( CamSharpness_t  sharpness, CamSensorSel
 	struct stCamacqSensorManager_t* pstSensorManager = NULL;
 	struct stCamacqSensor_t* pstSensor = NULL;
 
-	printk(KERN_ERR"CAMDRV_SetSharpness() called,sharpness = %d \r\n",sharpness);
-	
+      printk(KERN_ERR"CAMDRV_SetSharpness() called,sharpness = 0x%08x Drv_Sharpness= 0x%08x\r\n", sharpness, Drv_Sharpness);
+
+      if (sharpness == Drv_Sharpness)
+      {
+//            printk(KERN_ERR"Do not set sharpness \r\n");
+            return HAL_CAM_SUCCESS;
+      }
 	pstSensorManager = GetCamacqSensorManager();
 	if( pstSensorManager == NULL )
 	{
@@ -2248,10 +3131,68 @@ HAL_CAM_Result_en_t CAMDRV_SetSharpness( CamSharpness_t  sharpness, CamSensorSel
 		printk(KERN_INFO"CAMDRV_SetSharpness(): Error[%d] \r\n", sCamI2cStatus);
 		result = sCamI2cStatus;
 	}
+      Drv_Sharpness = sharpness;
     return result;
 }
-    
+#if 0    
+HAL_CAM_Result_en_t CAMDRV_SetAutoContrast(CamAutoContrast_t auto_contrast, CamSensorSelect_t sensor)
+{
+      HAL_CAM_Result_en_t result = HAL_CAM_SUCCESS;
+      struct stCamacqSensorManager_t* pstSensorManager = NULL;
+      struct stCamacqSensor_t* pstSensor = NULL;
 
+      printk(KERN_ERR"CAMDRV_SetAutoContrast() called,contrast = 0x%08x Drv_AutoContrast= 0x%08x\r\n", auto_contrast, Drv_AutoContrast);
+
+      if (auto_contrast == Drv_AutoContrast)
+      {
+            printk(KERN_ERR"Do not set auto_contrast \r\n");
+            return HAL_CAM_SUCCESS;
+      }
+
+      pstSensorManager = GetCamacqSensorManager();
+      if ( pstSensorManager == NULL )
+      {
+            printk(KERN_ERR"pstSensorManager is NULL \r\n");
+            return HAL_CAM_ERROR_OTHERS;
+      }
+
+      pstSensor = pstSensorManager->GetSensor( pstSensorManager, sensor );
+      if ( pstSensor == NULL )
+      {
+            printk(KERN_ERR"pstSensor is NULL \r\n");
+            return HAL_CAM_ERROR_OTHERS;
+      }
+
+      switch (auto_contrast)
+      {
+      case CamAutoContrast_on :
+            CAMDRV_SetContrast(CamContrast_0, sensor);
+            CAMDRV_SetSaturation(CamSaturation_0, sensor);
+            CAMDRV_SetSharpness(CamSharpness_0, sensor);
+            pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_AUTO_CONTRAST_ON);
+            break;
+      case CamAutoContrast_off :
+            pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_AUTO_CONTRAST_OFF);
+            CAMDRV_SetContrast(Drv_Contrast, sensor);
+            CAMDRV_SetSaturation(Drv_Saturation, sensor);
+            CAMDRV_SetSharpness(Drv_Sharpness, sensor);
+            break;
+      default :
+            printk("Unexpected auto_contrast mode : %d\n", auto_contrast);
+            break;
+      }
+
+      if (sCamI2cStatus != HAL_CAM_SUCCESS)
+      {
+            printk(KERN_INFO"CAMDRV_SetAutoContrast(): Error[%d] \r\n", sCamI2cStatus);
+            result = sCamI2cStatus;
+      }
+
+      Drv_AutoContrast = auto_contrast;
+
+      return result;
+}
+#endif
 
 //****************************************************************************
 // Function Name:   HAL_CAM_Result_en_t CAMDRV_SetContrast(Int8 contrast)
@@ -2265,8 +3206,13 @@ HAL_CAM_Result_en_t CAMDRV_SetContrast(CamContrast_t contrast, CamSensorSelect_t
 	struct stCamacqSensorManager_t* pstSensorManager = NULL;
 	struct stCamacqSensor_t* pstSensor = NULL;
 
-	printk(KERN_ERR"CAMDRV_SetContrast() called,contrast = %d \r\n",contrast);
-	
+      printk(KERN_ERR"CAMDRV_SetContrast() called,contrast = 0x%08x Drv_Contrast= 0x%08x\r\n", contrast, Drv_Contrast);
+
+      if (contrast == Drv_Contrast)
+      {
+//            printk(KERN_ERR"Do not set contrast \r\n");
+            return HAL_CAM_SUCCESS;
+      }
 	pstSensorManager = GetCamacqSensorManager();
 	if( pstSensorManager == NULL )
 	{
@@ -2311,6 +3257,7 @@ HAL_CAM_Result_en_t CAMDRV_SetContrast(CamContrast_t contrast, CamSensorSelect_t
 		printk(KERN_INFO"CAMDRV_SetContrast(): Error[%d] \r\n", sCamI2cStatus);
 		result = sCamI2cStatus;
 	}
+      Drv_Contrast = contrast;
     return result;
 }
 
@@ -2419,11 +3366,12 @@ HAL_CAM_Result_en_t CAMDRV_SetSensitivity( CamSensitivity_t iso, CamSensorSelect
 
 	printk(KERN_ERR"CAMDRV_SetSensitivity() called,iso =  0x%08x Drv_Iso= 0x%08x \r\n",iso,Drv_Iso);
 
-       if((iso==Drv_Iso)&&(gv_ForceSetSensor==FALSE))	
-       {
-		Drv_Iso= iso;
-		return HAL_CAM_SUCCESS;
-	}	   	
+      if (((gv_ForceSetSensor == NORMAL_SET) && (iso == Drv_Iso)) || (gv_ForceSetSensor == FORCELY_SKIP))
+      {
+            Drv_Iso = iso;
+//            printk(KERN_ERR"Do not set CAMDRV_SetSensitivity,Drv_Iso=%d  \r\n", Drv_Iso);
+            return HAL_CAM_SUCCESS;
+      }
 			
 	pstSensorManager = GetCamacqSensorManager();
 	if( pstSensorManager == NULL )
@@ -2442,19 +3390,37 @@ HAL_CAM_Result_en_t CAMDRV_SetSensitivity( CamSensitivity_t iso, CamSensorSelect
 	switch( iso )
 	{
              case CamSensitivity_Auto:
-                 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor,  CAMACQ_SENSORDATA_ISO_AUTO);
-             break;
+            {
+                  CAMDRV_Set_REG_TC_DBG_AutoAlgEnBits(pstSensor->m_pI2cClient, 5, true);
+                  pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_ISO_AUTO);
+            }
+            break;
+      case CamSensitivity_50:
+            {
+                  CAMDRV_Set_REG_TC_DBG_AutoAlgEnBits(pstSensor->m_pI2cClient, 5, false);
+                  pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_ISO_50);
+            }
+            break;
              
              case CamSensitivity_100:
-                 pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor,  CAMACQ_SENSORDATA_ISO_100);
+            {
+                  CAMDRV_Set_REG_TC_DBG_AutoAlgEnBits(pstSensor->m_pI2cClient, 5, false);
+                  pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_ISO_100);
+            }
              break;
              
              case CamSensitivity_200:
-                  pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor,  CAMACQ_SENSORDATA_ISO_200);
+            {
+                  CAMDRV_Set_REG_TC_DBG_AutoAlgEnBits(pstSensor->m_pI2cClient, 5, false);
+                  pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_ISO_200);
+            }
              break;
 			 
              case CamSensitivity_400:
-                  pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor,  CAMACQ_SENSORDATA_ISO_400);
+            {
+                  CAMDRV_Set_REG_TC_DBG_AutoAlgEnBits(pstSensor->m_pI2cClient, 5, false);
+                  pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_ISO_400);
+            }
              break;
 			 
              default:
@@ -2477,11 +3443,11 @@ HAL_CAM_Result_en_t CAMDRV_SetDTPmode(unsigned int testmode,CamSensorSelect_t se
 	struct stCamacqSensorManager_t* pstSensorManager = NULL;
 	struct stCamacqSensor_t* pstSensor = NULL;
 
-	printk(KERN_ERR"CAMDRV_SetDTPmode() called,testmode = %d \r\n",testmode);
+	printk(KERN_ERR"CAMDRV_SetDTPmode() called,testmode = %d Drv_DTPmode=%d \r\n",testmode,Drv_DTPmode);
 
        if(testmode==Drv_DTPmode)	
        {
-		printk(KERN_ERR"Do not set DTPmode,Drv_DTPmode=%d  \r\n",Drv_DTPmode);
+//            printk(KERN_ERR"Do not set DTPmode,Drv_DTPmode=%d  \r\n", Drv_DTPmode);
 		return HAL_CAM_SUCCESS;
 	}	   	
 		
@@ -2501,10 +3467,10 @@ HAL_CAM_Result_en_t CAMDRV_SetDTPmode(unsigned int testmode,CamSensorSelect_t se
 
 	if(testmode==TRUE)
 	{ 
-	        msleep(800);
+//	        msleep(800);
                 CamacqExtDirectlyWriteI2cLists(pstSensor->m_pI2cClient, reg_main_dtp_on,0 );
                //pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor,  CAMACQ_SENSORDATA_CONTRAST_0);
-	        msleep(800);
+//	        msleep(800);
 	}	
         else
         { 
@@ -2536,6 +3502,11 @@ HAL_CAM_Result_en_t CAMDRV_Setmode(
     
     printk(KERN_ERR"%s(): , mode : %d \r\n", __FUNCTION__, mode );
 
+      if (mode == Drv_Mode)
+      {
+//            printk(KERN_ERR"Do not set mode, already set Drv_Mode=%d  \r\n", Drv_Mode);
+            return HAL_CAM_SUCCESS;
+      }
     pstSensorManager = GetCamacqSensorManager();
     if( pstSensorManager == NULL )
     {
@@ -2553,7 +3524,7 @@ HAL_CAM_Result_en_t CAMDRV_Setmode(
    
      if(mode==CamVideo)
     {
-	printk(KERN_ERR"CAMDRV_SetVideoCaptureMode(): Video Preview!!!!\r\n");
+            printk(KERN_ERR"CAMDRV_Setmode(): Video Preview!!!!\r\n");
         pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_CAMCORDER);	
     }
 /*	 
@@ -2563,6 +3534,7 @@ HAL_CAM_Result_en_t CAMDRV_Setmode(
         pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_PREVIEW);
     }	//To do
     */
+      Drv_Mode = mode;
     return result;
 }
 #endif//swsw
@@ -2608,6 +3580,7 @@ HAL_CAM_Result_en_t CAMDRV_GetESDValue( bool *esd_value,CamSensorSelect_t sensor
 	return result;
 }
 
+
 //BYKIM_UNIFY
 HAL_CAM_Result_en_t CAMDRV_SetSensorParams( CAM_Parm_t parm,CamSensorSelect_t sensor)
 {
@@ -2615,7 +3588,7 @@ HAL_CAM_Result_en_t CAMDRV_SetSensorParams( CAM_Parm_t parm,CamSensorSelect_t se
     struct stCamacqSensorManager_t* pstSensorManager = NULL;
     struct stCamacqSensor_t* pstSensor = NULL;
     
-    printk(KERN_ERR"%s() \r\n", __FUNCTION__);
+    printk(KERN_ERR"     ====== %s() START ====== \n", __FUNCTION__);
 
     pstSensorManager = GetCamacqSensorManager();
     if( pstSensorManager == NULL )
@@ -2631,27 +3604,243 @@ HAL_CAM_Result_en_t CAMDRV_SetSensorParams( CAM_Parm_t parm,CamSensorSelect_t se
         return HAL_CAM_ERROR_OTHERS;
     }
 
-    result =CAMDRV_SetSceneMode(parm.scenemode,sensor);
+
+      if (PreviewRet)
+      {
+	     printk(KERN_ERR"CAMACQ_SENSORDATA_PREVIEW_RETURN\n");
+            pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_PREVIEW_RETURN);
+            PreviewRet = 0;
+		gFlashForExif = false;
+      }
+      else
+      {
+            if (!memcmp((void*)&Drv_parm, (void*)&parm, sizeof(CAM_Parm_t))) // same?
+            {
+                  printk("Drv_parm is same before parma %s() END\n", __func__);
+                  return result;
+            }
+      }
+
+      Drv_parm = parm;
+	result = CAMDRV_SetDTPmode(parm.testmode, sensor);
+	result = CAMDRV_Setmode(parm.mode, sensor);
+	result =CAMDRV_SetSceneMode(parm.scenemode,sensor);
+
+	result =CAMDRV_SetDigitalEffect(parm.coloreffects,sensor);
+	result =CAMDRV_SetWBMode(parm.wbmode,sensor);
+	result =CAMDRV_SetSensitivity(parm.iso,sensor);
+	result =CAMDRV_SetMeteringType(parm.aemode,sensor);
     
-    result =CAMDRV_SetDigitalEffect(parm.coloreffects,sensor);
-    result =CAMDRV_SetWBMode(parm.wbmode,sensor);
-    result =CAMDRV_SetSensitivity(parm.iso,sensor);
-    result =CAMDRV_SetMeteringType(parm.aemode,sensor);
-    result =CAMDRV_SetBrightness(parm.brightness,sensor);
+#if 0
+	result = CAMDRV_SetContrast(parm.contrast, sensor);
+	result = CAMDRV_SetSaturation(parm.saturation, sensor);
+	result = CAMDRV_SetSharpness(parm.sharpness, sensor);
+	result = CAMDRV_SetAutoContrast(parm.auto_contrast,sensor);
 
-    result =CAMDRV_SetDTPmode(parm.testmode,sensor);
-    result =CAMDRV_Setmode(parm.mode,sensor);
+	// For Test
+#else
+	result = CAMDRV_SetContrast(CamContrast_0, sensor);
+	result = CAMDRV_SetSaturation(CamSaturation_0, sensor);
+	result = CAMDRV_SetSharpness(CamSharpness_0, sensor);
+//	result = CAMDRV_SetAutoContrast(CamAutoContrast_off,sensor);
+#endif
+	result =CAMDRV_SetBrightness(parm.brightness,sensor);
 
-    result =CAMDRV_SetJpegsize(parm.jpegSize,sensor);
-    result =CAMDRV_SetJpegQuality(parm.quality,sensor);
-    result =CAMDRV_SetZoom(parm.zoom,sensor);
+	result =CAMDRV_SetJpegsize(parm.jpegSize,sensor);
+//	result =CAMDRV_SetJpegQuality(parm.quality,sensor);
+	result =CAMDRV_SetImageQuality(parm.quality,sensor);
+	result =CAMDRV_SetZoom(parm.zoom,sensor);
+	result =CAMDRV_SetFlashMode(parm.flash,sensor);
+	result =CAMDRV_SetFocusMode(parm.focus,sensor);
+
     if(gv_ForceSetSensor!=NORMAL_SET)
     {
          gv_ForceSetSensor=NORMAL_SET;
          printk(KERN_ERR"gv_ForceSetSensor is NORMAL_SET \r\n");	
     }
-    
+		
+    printk(KERN_ERR"     ======= %s() END ======= \n", __FUNCTION__);
     return result;
+}
+void CAMDRV_Set_REG_TC_DBG_AutoAlgEnBits(struct i2c_client* pI2cClient, int bit, int set
+                                              )
+{
+
+      U8 AddrValueForRead1[4] = {0x00, 0x2C, 0x70, 0x00};
+      U8 AddrValueForRead2[4] = {0x00, 0x2E, 0x04, 0xE6};
+      U8 ReadWriteAddr1[4] = {0x0F, 0x12, 0x00, 0x00};
+      U8 readValue1[2] = {'\0', };
+
+      U8 AddrValueForWrite1[4] = {0x00, 0x28, 0x70, 0x00};
+      U8 AddrValueForWrite2[4] = {0x00, 0x2A, 0x04, 0xE6};
+
+      // Read 04E6
+      CamacqExtWriteI2c(	pI2cClient, AddrValueForRead1, 4);
+      CamacqExtWriteI2c(	pI2cClient, AddrValueForRead2, 4);
+      CamacqExtReadI2c(   pI2cClient, 0x0F12, 2, readValue1, 2);
+
+      //      printk("<hunny> : %s +++ : readValue1[0] = 0x%x, readValue1[1] = 0x%x\n",__func__, readValue1[0], readValue1[1]);
+
+      if (bit == 3 && set
+                        == true)
+            {
+                  if (readValue1[1] & 0x8 == 1)
+                        return ;
+                  if (Drv_Scene == CamSceneMode_Night)
+                        mdelay(250);
+                  else
+                        mdelay(100);
+
+                  readValue1[1] = readValue1[1] | 0x8;
+            }
+      else if (bit == 3 && set
+                        == false)
+            {
+                  if (readValue1[1] & 0x8 == 0)
+                        return ;
+                  if (Drv_Scene == CamSceneMode_Night)
+                        mdelay(250);
+                  else
+                        mdelay(100);
+
+                  readValue1[1] = readValue1[1] & 0xF7;
+            }
+      else if (bit == 5 && set
+                        == true)
+            {
+                  if (readValue1[1] & 0x20 == 1)
+                        return ;
+                  if (Drv_Scene == CamSceneMode_Night)
+                        mdelay(250);
+                  else
+                        mdelay(100);
+
+                  readValue1[1] = readValue1[1] | 0x20;
+            }
+      else if (bit == 5 && set
+                        == false)
+            {
+                  if (readValue1[1] & 0x20 == 0)
+                        return ;
+                  if (Drv_Scene == CamSceneMode_Night)
+                        mdelay(250);
+                  else
+                        mdelay(100);
+
+                  readValue1[1] = readValue1[1] & 0xFFDF;
+            }
+
+      ReadWriteAddr1[2] = readValue1[0];
+      ReadWriteAddr1[3] = readValue1[1];
+
+      CamacqExtWriteI2c(	pI2cClient, AddrValueForWrite1, 4);
+      CamacqExtWriteI2c(	pI2cClient, AddrValueForWrite2, 4);
+      CamacqExtWriteI2c( pI2cClient, ReadWriteAddr1, 4);
+
+      //      printk("<hunny> : %s --- : readValue1[0] = 0x%x, readValue1[1] = 0x%x\n",__func__, readValue1[0], readValue1[1]);
+
+      return ;
+}
+
+void CAMDRV_Check_REG_TC_GP_EnableCaptureChanged(struct i2c_client* pI2cClient)
+{
+	U8 AddrValueForRead1[4] = {0x00, 0x2C, 0x70, 0x00};
+	U8 AddrValueForRead2[4] = {0x00, 0x2E, 0x02, 0x44};
+	U8 readValue[2] = {'\0', };
+	U16 Cnt = 0;
+
+	while(Cnt < 150)
+	{
+		CamacqExtWriteI2c(pI2cClient, AddrValueForRead1, 4);
+		CamacqExtWriteI2c(pI2cClient, AddrValueForRead2, 4);
+		CamacqExtReadI2c(pI2cClient, 0x0F12, 2, readValue, 2);
+
+		if( !readValue[1] ) break;
+		mdelay(10);
+		Cnt++;
+	}
+	printk(KERN_ERR"%s():  Cnt[%d], REG_TC_GP_EnablePreviewChanged[%d] \n", __FUNCTION__, Cnt*10, readValue[1]);
+
+	return ;
+}
+
+void  CAMDRV_GetInfo(CamSensorSelect_t sensor)
+{
+	struct stCamacqSensorManager_t* pstSensorManager = NULL;
+	struct stCamacqSensor_t* pstSensor = NULL;
+    
+	U16 SHT_TIME_OUT= 0x0F12;
+	U8 ReadDataExp1[2]={0,0};
+	U8 ReadDataExp2[2]={0,0};
+	U8 ReadDataISO1[2]={0,0};
+	U8 ReadDataISO2[2]={0,0};
+
+	u8 INT_CLR0[4]={0xFC,0xFC,0xD0,0x00};
+	u8 INT_CLR1[4]={0x00,0x2C,0x70,0x00};
+	u8 INT_CLR2[4]={0x00,0x2E,0x2B,0xC0};
+
+	U32 DataExp;
+	U16 DataISO;
+	U16 DataISO1;
+	UL32 result;
+		
+	printk(KERN_ERR"%s() \r\n", __FUNCTION__);
+	    
+	pstSensorManager = GetCamacqSensorManager();
+	if( pstSensorManager == NULL )
+	{
+		printk(KERN_ERR"pstSensorManager is NULL \r\n");
+		return HAL_CAM_ERROR_OTHERS;
+	}
+    
+	pstSensor = pstSensorManager->GetSensor( pstSensorManager, sensor );
+	if( pstSensor == NULL )
+	{
+		printk(KERN_ERR"pstSensor is NULL \r\n");
+		return HAL_CAM_ERROR_OTHERS;
+	}
+
+	CamacqExtWriteI2c( pstSensor->m_pI2cClient,INT_CLR0,4);
+	CamacqExtWriteI2c( pstSensor->m_pI2cClient,INT_CLR1,4);
+	CamacqExtWriteI2c( pstSensor->m_pI2cClient,INT_CLR2,4);
+
+	//STEP 1 : Check Outdoor Condition and Write outdoor table
+	CamacqExtReadI2c( pstSensor->m_pI2cClient, 0x0F12,2,ReadDataExp1,2);		 
+	CamacqExtReadI2c( pstSensor->m_pI2cClient, 0x0F12,2,ReadDataExp2,2);		 
+	CamacqExtReadI2c( pstSensor->m_pI2cClient, 0x0F12,2,ReadDataISO1,2);		 
+	CamacqExtReadI2c( pstSensor->m_pI2cClient, 0x0F12,2,ReadDataISO2,2);		 
+
+#if 0
+	printk("ReadDataExp1[0x%02X], [0x%02X]\n", ReadDataExp1[0], ReadDataExp1[1]);	
+	printk("ReadDataExp2[0x%02X], [0x%02X]\n", ReadDataExp2[0], ReadDataExp2[1]);
+	printk("ReadDataISO1[0x%02X], [0x%02X]\n", ReadDataISO1[0], ReadDataISO1[1]);	
+	printk("ReadDataISO2[0x%02X], [0x%02X]\n", ReadDataISO2[0], ReadDataISO2[1]);
+#endif
+
+	/////////////////////////////////
+	// Get ISO value
+	DataISO = ReadDataISO1[0] << 8 | ReadDataISO1[1];
+	DataISO1 = ReadDataISO2[0] << 8 | ReadDataISO2[1];
+	
+	result = ((DataISO*DataISO1) / 256) / 2;
+
+	if(result < 192) 
+		ISOSpeed = 50;
+	else if ( result < 383 )
+      		ISOSpeed = 100;
+	else if ( result < 768 )
+		ISOSpeed = 200;
+	else
+		ISOSpeed = 400;
+
+	/////////////////////////////////
+	// Get EXP value
+	DataExp =  (ReadDataExp2[0] << 24) | (ReadDataExp2[1] << 16) | (ReadDataExp1[0] << 8) | ReadDataExp1[1];
+	result = DataExp;
+	ExposureTime = 1000 /(result /400);
+
+	printk("%s:ISOSpeed=[%d], ExposureTime=[%d]\n", __func__, ISOSpeed,ExposureTime);
+
 }
 
 HAL_CAM_Result_en_t CAMDRV_GetSensorValuesForEXIF( CAM_Sensor_Values_For_Exif_t *exif_parm,CamSensorSelect_t sensor)
@@ -2677,24 +3866,71 @@ HAL_CAM_Result_en_t CAMDRV_GetSensorValuesForEXIF( CAM_Sensor_Values_For_Exif_t 
     }
 #endif
 
-    sprintf(aString, "1/%d", gv_checkEXPtime); 
+	CAMDRV_GetInfo(0);
+	sprintf(aString, "1/%d", ExposureTime); 
     strcpy(exif_parm->exposureTime,aString);
 
-    sprintf(aString, "%d", gv_isoSpeedRatings); 
+	sprintf(aString, "%d,", ISOSpeed); 
     strcpy(exif_parm->isoSpeedRating,aString);
 
+    if(Drv_Scene==CamSceneMode_Auto)
+    {
+        switch(Drv_Brightness)
+        {
+            case CamBrightnessLevel_0:   // -2
+                strcpy(aString, "-20/10");
+                break;
+            case CamBrightnessLevel_1:   // -1.5
+                strcpy(aString, "-15/10");
+                break;
+            case CamBrightnessLevel_2:   // -1
+                strcpy(aString, "-10/10");
+                break;
+            case CamBrightnessLevel_3:     // -0.5
+                strcpy(aString, "-5/10");
+                break;
+            case CamBrightnessLevel_4:     // 0
+                strcpy(aString, "0/10");
+                break;
+            case CamBrightnessLevel_5:     // 0.5
+                strcpy(aString, "5/10");
+                break;
+            case CamBrightnessLevel_6:     // 1.0
+                strcpy(aString, "10/10");
+                break;
+            case CamBrightnessLevel_7:     // 1.5
+                strcpy(aString, "15/10");
+                break;
+            case CamBrightnessLevel_8:     // 2.0
+                strcpy(aString, "20/10");
+                break;            
+        }    
+    }
+   else  if(Drv_Scene==CamSceneMode_Beach_Snow)
+   {
+        strcpy(aString, "10/10");
+    }
+   else
+   {
+        strcpy(aString, "0/10");
+    }
+
+   if(gFlashForExif == true)
+   	    strcpy(exif_parm->flash,"1");
+   else
+	    strcpy(exif_parm->flash,"0");
+	    
+    strcpy(exif_parm->exposureBias,aString);
     strcpy(exif_parm->FNumber,(char *)"26/10" );
-    strcpy(exif_parm->maxLensAperture,(char *)"246/100" );
-    strcpy(exif_parm->lensFocalLength,(char *)"278/100" );
+    strcpy(exif_parm->maxLensAperture,(char *)"300/100" );
+    strcpy(exif_parm->lensFocalLength,(char *)"355/100" );
     strcpy(exif_parm->exposureProgram,"3" );
     strcpy(exif_parm->colorSpaceInfo,"1");
 	
     strcpy(exif_parm->aperture,"" );//NOT_USED 
     strcpy(exif_parm->brightness,"" );//NOT_USED 
-    strcpy(exif_parm->softwareUsed,"");//NOT_USED 
+    strcpy(exif_parm->softwareUsed,"S5380iXXKJ4");//NOT_USED 
     strcpy(exif_parm->shutterSpeed,"");//NOT_USED 
-    strcpy(exif_parm->exposureBias,"");//NOT_USED 
-    strcpy(exif_parm->flash,"");//NOT_USED 
     strcpy(exif_parm->userComments,"");//NOT_USED 
     strcpy(exif_parm->contrast,"");//NOT_USED 
     strcpy(exif_parm->saturation,"");//NOT_USED 
@@ -2764,9 +4000,11 @@ struct sens_methods sens_meth = {
     DRV_StoreBaseAddress : CAMDRV_StoreBaseAddress,
     DRV_TurnOnAF : CAMDRV_TurnOnAF,
     DRV_TurnOffAF : CAMDRV_TurnOffAF,
+	DRV_CancelAF : CAMDRV_CancelAF,
     DRV_SetSensorParams : CAMDRV_SetSensorParams, //BYKIM_UNIFY
     DRV_GetSensorValuesForEXIF : CAMDRV_GetSensorValuesForEXIF,
-    DRV_GetESDValue : CAMDRV_GetESDValue//BYKIM_ESD
+    DRV_GetESDValue : CAMDRV_GetESDValue,//BYKIM_ESD
+	DRV_SetFlashForVideo : CAMDRV_SetFlashForVideo
 };
 
 struct sens_methods *CAMDRV_primary_get(void)
@@ -2829,9 +4067,115 @@ HAL_CAM_Result_en_t CamacqExtWriteI2cLists( const void *pvArg, int iResType )
 #endif
 
 
+
+#if 1       // Albert Chung 2011-10-21 : Applied New Algorithm - CSP_465088 Test Patch : To enhance shot-to-shot time (CooperVE) 
+
+#define VMARKER_START                   0xFF
+#define VMARKER_SOEI                    0xBE        // Start of embedded image
+#define VMARKER_EOEI                    0xBF        // End of embedded image
+#define VMARKER_SOSI                    0xBC        // Start of Status Information
+#define VMARKER_EOSI                    0xBD        // End of Status Information
+#define VIDEO_LINE_DATA_SOEI_SIZE       2
+#define VIDEO_LINE_DATA_EOEI_SIZE       2
+#define VIDEO_LINE_DATA_MARKERS_SIZE    4           // = VIDEO_LINE_DATA_SOEI_SIZE + VIDEO_LINE_DATA_EOEI_SIZE
+#define VIDEO_LINE_POINTER_SIZE         3           // 
+
+#define INTERLEAVED_TABLE_SIZE          3
+#define INTERLEAVED_ERROR_STATUS_SIZE   2
+#define INTERLEAVED_JPEG_SIZE_SIZE      3
+
+int CAMDRV_DecodeInterleaveData(
+									unsigned char *pInterleaveData, 	// (IN) Pointer of Interleave Data
+									int interleaveDataSize, 			// (IN) Data Size of Interleave Data
+									int yuvWidth, 						// (IN) Width of YUV Thumbnail
+									int yuvHeight, 						// (IN) Height of YUV Thumbnail
+									unsigned char *pJpegData,			// (OUT) Pointer of Buffer for Receiving JPEG Data 
+									int *pJpegSize,  					// (OUT) Pointer of JPEG Data Size
+									unsigned char *pYuvData				// (OUT) Pointer of Buffer for Receiving YUV Data 
+								)
+{
+
+	unsigned char *pBuf;
+    unsigned char *pYuvTableOffset;
+    unsigned char *pYuvOffset, *pYuvHeader;
+    unsigned char *pJpegOffset;
+    int i, nPartialJpegSize, nJpegSizeInInterleavedData;
+    unsigned short ErrStatus;
+
+	printk(KERN_INFO"  %s() : START\r\n", __FUNCTION__);
+
+    *pJpegSize = 0;
+
+#if 0
+    // Retrieve the error status to check if this interleaved data is valid or not.
+    pBuf = pInterleaveData + interleaveDataSize - INTERLEAVED_ERROR_STATUS_SIZE - INTERLEAVED_JPEG_SIZE_SIZE;
+    ErrStatus = (*pBuf << 8) | *(pBuf+1) ;
+    if (ErrStatus != 0)
+    {
+        printk(KERN_ERR"  [ERROR] This interleaved data is not valid so should be ignored (errStatus=%08x\r\n",ErrStatus);
+        return FALSE;
+    }
+#endif
+
+    // Retrieve the number of JPEG bytes in a interleaved frame.
+    pBuf = pInterleaveData + interleaveDataSize - INTERLEAVED_JPEG_SIZE_SIZE;
+    nJpegSizeInInterleavedData = (*pBuf << 16) | (*(pBuf+1) << 8) | *(pBuf+2);
+
+    pJpegOffset = pInterleaveData;    
+    pYuvTableOffset = pInterleaveData + interleaveDataSize
+                    - (INTERLEAVED_TABLE_SIZE * yuvHeight + INTERLEAVED_ERROR_STATUS_SIZE + INTERLEAVED_JPEG_SIZE_SIZE);
+
+    for (i=0; i<yuvHeight; i++)
+    {
+        pYuvOffset = pInterleaveData + ((*pYuvTableOffset << 16) | (*(pYuvTableOffset+1) << 8) | *(pYuvTableOffset+2));
+
+        // Sanity check (SOEI & EOEI)
+        pYuvHeader = pYuvOffset;
+        if ((*pYuvHeader != VMARKER_START) || (*(pYuvHeader+1) != VMARKER_SOEI))
+        {
+            printk(KERN_ERR"  [ERROR] SOEI of interleaved YUV data is corrupted : %08x %08x (%dth YUV data)\r\n", 
+                    *pYuvHeader, *(pYuvHeader+1), i);
+            return FALSE;
+        }
+        pYuvHeader = pYuvOffset + VIDEO_LINE_DATA_SOEI_SIZE + (yuvWidth<<1);
+        if ((*pYuvHeader != VMARKER_START) || (*(pYuvHeader+1) != VMARKER_EOEI))
+        {
+            printk(KERN_ERR"  [ERROR] EOEI of interleaved YUV data is corrupted : %08x %08x (%dth YUV data)\r\n", 
+                    *pYuvHeader, *(pYuvHeader+1), i);
+            return FALSE;
+        }
+        
+        // 1. Save JPEG data
+        //     Calculate the size of partial JPEG data
+        nPartialJpegSize = pYuvOffset - pJpegOffset;
+        copy_to_user(pJpegData, pJpegOffset, nPartialJpegSize);
+        pJpegData += nPartialJpegSize;
+        *pJpegSize += nPartialJpegSize;
+
+        //     Calculate the next offset of JPEG data (4 bytes for SOEI(FFBC) and EOEI(FFBD))
+        pJpegOffset =  pJpegOffset + nPartialJpegSize + (yuvWidth << 1) + VIDEO_LINE_DATA_MARKERS_SIZE;
+        
+        // 2. Save YUV thumbnail data (To skip SOEI (2bytes), which is the first 2 byte of each video line)
+        copy_to_user(pYuvData, pYuvOffset + VIDEO_LINE_DATA_SOEI_SIZE, yuvWidth << 1);
+        pYuvData += (yuvWidth << 1);
+
+        pYuvTableOffset += VIDEO_LINE_POINTER_SIZE;
+    }
+
+    if (*pJpegSize < nJpegSizeInInterleavedData)
+    {
+        nPartialJpegSize = nJpegSizeInInterleavedData - *pJpegSize;
+        copy_to_user(pJpegData, pJpegOffset, nPartialJpegSize);
+        *pJpegSize += nPartialJpegSize;
+    }
+
+	printk(KERN_INFO"  %s() : END\r\n", __FUNCTION__);
+
+    return TRUE;
+}
+#else
+
 //temp_denis
-
-
 
 #if 1
 
@@ -2946,6 +4290,7 @@ int CAMDRV_DecodeInterleaveData(
 	int bIsJpegEOIFound  = FALSE;
 	int bJpegIsDone      = FALSE;
 
+	printk(KERN_INFO"  %s() : START\r\n", __FUNCTION__);
 
     if (!CAMDRV_IsInterleavedValid(pInterleaveData, interleaveDataSize, yuvWidth, yuvHeight))
     {
@@ -2999,7 +4344,7 @@ int CAMDRV_DecodeInterleaveData(
 												*(pSrcBuf + (yuvWidth << 1)+2));
 						return FALSE;
 					}
-					printk(KERN_INFO"     : Done\r\n");
+//					printk(KERN_INFO"     : Done\r\n");
 				}
 				else if (*(pSrcBuf+1)==VMARKER_EOI)
 				{
@@ -3064,6 +4409,8 @@ int CAMDRV_DecodeInterleaveData(
 		printk(KERN_INFO"ERROR : Thumbnail=%d, JPEG_EOI=%d, JPEG=%d", bIsThumbnailDone, bIsJpegEOIFound, bJpegIsDone);
 		return FALSE;
 	}
+	
+	printk(KERN_INFO"  %s() : END\r\n", __FUNCTION__);
 
 	return TRUE;
 }
@@ -3221,4 +4568,4 @@ int CAMDRV_DecodeInterleaveData(unsigned char *pInterleaveData, 	// (IN) Pointer
 }
 
 #endif
-
+#endif
