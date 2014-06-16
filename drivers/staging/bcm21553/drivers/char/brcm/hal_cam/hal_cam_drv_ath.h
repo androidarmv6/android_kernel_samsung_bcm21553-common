@@ -1110,9 +1110,15 @@ struct sens_methods {
     void (*DRV_StoreBaseAddress)(void *virt_ptr);
     HAL_CAM_Result_en_t (*DRV_TurnOnAF)(CamSensorSelect_t sensor);
     HAL_CAM_Result_en_t (*DRV_TurnOffAF)(CamSensorSelect_t sensor);
+#ifdef CONFIG_BCM_CAM_S5K4ECGX
+    HAL_CAM_Result_en_t (*DRV_CancelAF)(CamSensorSelect_t sensor);
+#endif
     HAL_CAM_Result_en_t (*DRV_SetSensorParams)( CAM_Parm_t parm,CamSensorSelect_t sensor);//BYKIM_UNIFY
 	HAL_CAM_Result_en_t (*DRV_GetSensorValuesForEXIF)( CAM_Sensor_Values_For_Exif_t *exif_parm,CamSensorSelect_t sensor);//BYKIM_UNIFY
 	HAL_CAM_Result_en_t (*DRV_GetESDValue)( bool *esd_value,CamSensorSelect_t sensor); //BYKIM_ESD
+#ifdef CONFIG_BCM_CAM_S5K4ECGX
+	HAL_CAM_Result_en_t (*DRV_SetFlashForVideo)(bool data, CamSensorSelect_t sensor);
+#endif
 };
 #endif  // _HAL_CAM_DRV_H__
 

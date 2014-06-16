@@ -230,6 +230,17 @@ typedef struct stCamacqSensorRegs_t
     const void*     pvExpCompensation_7_Regs;
     const void*     pvExpCompensation_8_Regs;
 
+#ifdef CONFIG_BCM_CAM_S5K4ECGX // for cooperve only
+    /* AE */  //lyon.cho
+    const void*     pvAELockRegs;
+    const void*     pvAEUnlockRegs;
+    const void*     pvAWBLockRegs;
+    const void*     pvAWBUnlockReg;
+    
+    const void*     pvSingleAFStartRegs;
+    const void*     pvPreviewRetRegs;
+#endif    
+
     /* AF */
     const void*     pvSetAFRegs;
     const void*     pvOffAFRegs;
@@ -359,6 +370,56 @@ typedef struct stCamacqSensorRegs_t
 	const void*    pvSnapshotOutdoorRegs;
 	const void*    pvSnapshotLowlightRegs;
 	const void*    pvSnapshotNightsceneRegs;
+#endif
+
+#if defined(CONFIG_BCM_CAM_S5K4ECGX)
+	const void*    pvFlashInit;
+	const void*    pvFlashPreOn;
+	const void*    pvFlashPreOff;
+	const void*    pvFlashOn;
+	const void*    pvFlashOff;
+	const void*    pvFlashLowCapOn;
+	const void*    pvFlashLowCapOff;
+
+	const void*    pvZoom_1_25_reg_0;
+	const void*    pvZoom_1_25_reg_1;
+	const void*    pvZoom_1_25_reg_2;
+	const void*    pvZoom_1_25_reg_3;
+	const void*    pvZoom_1_25_reg_4;
+	const void*    pvZoom_1_25_reg_5;
+	const void*    pvZoom_1_25_reg_6;
+	const void*    pvZoom_1_25_reg_7;
+	const void*    pvZoom_1_25_reg_8;
+
+	const void*    pvZoom_1_6_reg_0;
+	const void*    pvZoom_1_6_reg_1;
+	const void*    pvZoom_1_6_reg_2;
+	const void*    pvZoom_1_6_reg_3;
+	const void*    pvZoom_1_6_reg_4;
+	const void*    pvZoom_1_6_reg_5;
+	const void*    pvZoom_1_6_reg_6;
+	const void*    pvZoom_1_6_reg_7;
+	const void*    pvZoom_1_6_reg_8;
+
+	const void*    pvZoom_2_reg_0;	
+	const void*    pvZoom_2_reg_1;
+	const void*    pvZoom_2_reg_2;
+	const void*    pvZoom_2_reg_3;
+	const void*    pvZoom_2_reg_4;
+	const void*    pvZoom_2_reg_5;
+	const void*    pvZoom_2_reg_6;
+	const void*    pvZoom_2_reg_7;
+	const void*    pvZoom_2_reg_8;
+
+	const void*    pvZoom_4_reg_0;	
+	const void*    pvZoom_4_reg_1;
+	const void*    pvZoom_4_reg_2;
+	const void*    pvZoom_4_reg_3;
+	const void*    pvZoom_4_reg_4;
+	const void*    pvZoom_4_reg_5;
+	const void*    pvZoom_4_reg_6;
+	const void*    pvZoom_4_reg_7;
+	const void*    pvZoom_4_reg_8;
 #endif
 
     /* Private Control */
