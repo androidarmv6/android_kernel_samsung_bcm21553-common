@@ -610,7 +610,7 @@ static struct bcm_keymap newKeymap[] = {
 	{BCM_KEY_ROW_0, BCM_KEY_COL_0, "Volume Up", KEY_VOLUMEUP},
 #if defined(CONFIG_BOARD_TASSVE) || defined(CONFIG_BOARD_TOTORO)
 	{BCM_KEY_ROW_0, BCM_KEY_COL_1, "unused", 0},
-#elif defined(CONFIG_BOARD_COOOPERVE)
+#elif defined(CONFIG_BOARD_COOPERVE)
 	{BCM_KEY_ROW_0, BCM_KEY_COL_1, "Volume Down", KEY_VOLUMEDOWN},
 #endif
 	{BCM_KEY_ROW_0, BCM_KEY_COL_2, "unused", 0},
@@ -633,7 +633,7 @@ static struct bcm_keymap newKeymap[] = {
 	{BCM_KEY_ROW_1, BCM_KEY_COL_7, "unused", 0},
 #if defined(CONFIG_BOARD_TASSVE) || defined(CONFIG_BOARD_TOTORO)
 	{BCM_KEY_ROW_2, BCM_KEY_COL_0, "key home", KEY_HOME},
-	{BCM_KEY_ROW_2, BCM_KEY_COL_1, "key menu", KEY_MENU},
+	{BCM_KEY_ROW_3, BCM_KEY_COL_1, "key back", KEY_BACK},
 #elif defined(CONFIG_BOARD_COOPERVE)
 	{BCM_KEY_ROW_2, BCM_KEY_COL_0, "unused", 0},
 	{BCM_KEY_ROW_2, BCM_KEY_COL_1, "unused", 0},
@@ -646,7 +646,7 @@ static struct bcm_keymap newKeymap[] = {
 	{BCM_KEY_ROW_2, BCM_KEY_COL_7, "unused", 0},
 	{BCM_KEY_ROW_3, BCM_KEY_COL_0, "unused", 0},
 #if defined(CONFIG_BOARD_TASSVE) || defined(CONFIG_BOARD_TOTORO)
-	{BCM_KEY_ROW_3, BCM_KEY_COL_1, "key back", KEY_BACK},
+	{BCM_KEY_ROW_2, BCM_KEY_COL_1, "key menu", KEY_MENU},
 #elif defined(CONFIG_BOARD_COOPERVE)
 	{BCM_KEY_ROW_3, BCM_KEY_COL_1, "unused", 0},
 #endif
@@ -1937,7 +1937,7 @@ static struct platform_device touch_i2c_gpio_device = {
 #endif
 
 static struct i2c_board_info __initdata athenaray_i2cgpio0_board_info[] = {
-#if defined(CONFIG_TOUCHSCREEN_MMS128_REV04) || defined(CONFIG_TOUCHSCREEN_MMS128)
+#if defined(CONFIG_TOUCHSCREEN_MMS128_REV04) || defined(CONFIG_TOUCHSCREEN_MMS128) || defined(CONFIG_TOUCHSCREEN_MMS128_TASSCOOPER)
 	{
 				I2C_BOARD_INFO("melfas-mms128", 0x48),
 				.irq = GPIO_TO_IRQ(TSP_INT),
@@ -1949,19 +1949,7 @@ static struct i2c_board_info __initdata athenaray_i2cgpio0_board_info[] = {
 				.irq = GPIO_TO_IRQ(TSP_INT),
 	},
 #endif
-#if defined(CONFIG_TOUCHSCREEN_TMA340)
-	{
-				I2C_BOARD_INFO("synaptics-rmi-ts", 0x20),
-				.irq = GPIO_TO_IRQ(TSP_INT),
-	},
-#endif
-#if defined(CONFIG_TOUCHSCREEN_MMS128_TASSCOOPER)
-	{
-				I2C_BOARD_INFO("melfas-mms128", 0x48),
-				.irq = GPIO_TO_IRQ(TSP_INT),
-	},
-#endif
-#ifdef CONFIG_TOUCHSCREEN_TMA340_COOPERVE
+#if defined(CONFIG_TOUCHSCREEN_TMA340) || defined(CONFIG_TOUCHSCREEN_TMA340_COOPERVE)
 	{
 				I2C_BOARD_INFO("synaptics-rmi-ts", 0x20),
 				.irq = GPIO_TO_IRQ(TSP_INT),
@@ -2783,15 +2771,14 @@ int board_sysconfig(uint32_t module, uint32_t op)
 			       | SYSCFG_IOCR2_SD3DAT_PULL_CTRL(SD_PULL_UP),
 			       ADDR_SYSCFG_IOCR2);
 
+			//Set SDIO3 Driving Strength
 #if defined(CONFIG_BOARD_TOTORO) && defined(CONFIG_TARGET_LOCALE_AUS_TEL)				
-			//Set SDIO3 Driving Strength			
 			printk("[CONFIG_TARGET_LOCALE_AUS_TEL] SDIO3 DS is set to 12mA\n");
 			val = readl(ADDR_SYSCFG_IOCR4);
 			val &=~(SYSCFG_IOCR4_SD3_DAT_DRV_STGTH(0x7));
 			val &=~(SYSCFG_IOCR4_SD3_CLK_DRV_STGTH(0x7));
 			val |=(SYSCFG_IOCR4_SD3_DAT_DRV_STGTH(0x7)+SYSCFG_IOCR4_SD3_CLK_DRV_STGTH(0x7));
 #elif defined(CONFIG_BOARD_TASSVE) || defined(CONFIG_BOARD_TOTORO)
-			//Set SDIO3 Driving Strength			
 			printk("SDIO3 DS is set to 6mA\n");
 			val = readl(ADDR_SYSCFG_IOCR4);
 			val &=~(SYSCFG_IOCR4_SD3_DAT_DRV_STGTH(0x7));
@@ -3130,8 +3117,8 @@ int board_sysconfig(uint32_t module, uint32_t op)
 			writel(readl(ADDR_GPIO_GPIPEN0) &
 				(0xBFFFFFFF), ADDR_GPIO_GPIPEN0);
 		}
-#endif
 		break;
+#endif
 	case SYSCFG_SENSORS:
 		if(op == SYSCFG_ENABLE){
 			writel(readl(IO_ADDRESS(ADDR_SYSCFG_IOCR3_PHYS)) &0x7fffffff  , IO_ADDRESS(ADDR_SYSCFG_IOCR3_PHYS));	//Disable the 3rd BSC on GPIO7, GPIO15
