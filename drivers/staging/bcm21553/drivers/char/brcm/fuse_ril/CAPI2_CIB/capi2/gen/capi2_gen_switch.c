@@ -3703,13 +3703,7 @@ void GenGetPayloadInfo(void* dataBuf, MsgType_t msgType, void** ppBuf, UInt32* l
 		CAPI2_SS_CALL_WAITING_STATUS_RSP_Rsp_t* pVal = (CAPI2_SS_CALL_WAITING_STATUS_RSP_Rsp_t*)dataBuf;
 		*ppBuf = (void*)(pVal->val);
 		break;
-	}	case MSG_USSD_DATA_IND:	{		CAPI2_USSD_DATA_IND_Rsp_t* pVal = (CAPI2_USSD_DATA_IND_Rsp_t*)dataBuf;		*ppBuf = (void*)(pVal->val);		break;	}	case MSG_USSD_CALLINDEX_IND:	{		CAPI2_USSD_CALLINDEX_IND_Rsp_t* pVal = (CAPI2_USSD_CALLINDEX_IND_Rsp_t*)dataBuf;		*ppBuf = (void*)(pVal->val);		break;	}	case MSG_USSD_SESSION_END_IND:	{		CAPI2_USSD_SESSION_END_IND_Rsp_t* pVal = (CAPI2_USSD_SESSION_END_IND_Rsp_t*)dataBuf;		*ppBuf = (void*)(pVal->val);		break;	}	case MSG_MS_SET_RAT_AND_BAND_RSP:	{		*ppBuf = NULL;		break;	}	case MSG_MNCC_CLIENT_FACILITY_IND:	{		CAPI2_MNCC_CLIENT_FACILITY_IND_Rsp_t* pVal = (CAPI2_MNCC_CLIENT_FACILITY_IND_Rsp_t*)dataBuf;		*ppBuf = (void*)(pVal->val);		break;	}	case MSG_PBK_READY_IND:
-	{
-		CAPI2_PbkReadyInd_Rsp_t* pVal = (CAPI2_PbkReadyInd_Rsp_t*)dataBuf;
-		*ppBuf = (void*)(pVal->val);
-		break;
-	}
-	default:
+	}	case MSG_USSD_DATA_IND:	{		CAPI2_USSD_DATA_IND_Rsp_t* pVal = (CAPI2_USSD_DATA_IND_Rsp_t*)dataBuf;		*ppBuf = (void*)(pVal->val);		break;	}	case MSG_USSD_CALLINDEX_IND:	{		CAPI2_USSD_CALLINDEX_IND_Rsp_t* pVal = (CAPI2_USSD_CALLINDEX_IND_Rsp_t*)dataBuf;		*ppBuf = (void*)(pVal->val);		break;	}	case MSG_USSD_SESSION_END_IND:	{		CAPI2_USSD_SESSION_END_IND_Rsp_t* pVal = (CAPI2_USSD_SESSION_END_IND_Rsp_t*)dataBuf;		*ppBuf = (void*)(pVal->val);		break;	}	case MSG_MS_SET_RAT_AND_BAND_RSP:	{		*ppBuf = NULL;		break;	}	case MSG_MNCC_CLIENT_FACILITY_IND:	{		CAPI2_MNCC_CLIENT_FACILITY_IND_Rsp_t* pVal = (CAPI2_MNCC_CLIENT_FACILITY_IND_Rsp_t*)dataBuf;		*ppBuf = (void*)(pVal->val);		break;	}	default:
 		break;
 	}
 	return;

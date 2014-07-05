@@ -417,6 +417,9 @@ void GenChapRequest(CHAP_ChallengeOptions_t* cc, char* chal_name)
 	unsigned int i;
 	UInt8 name_len,outlen;
 
+#if defined(CONFIG_TARGET_LOCALE_AUS_TEL)
+ chal_len = 16; 
+#else
 	//Random challenge
 	chal_len = 0;
 	while(chal_len == 0)   /* get non-zero chal_len */
@@ -424,6 +427,7 @@ void GenChapRequest(CHAP_ChallengeOptions_t* cc, char* chal_name)
 		chal_len = (unsigned)rand() & (MAX_CHALLENGE_LENGTH-1);   /* get length < MAX */
 	while(chal_len < MIN_CHALLENGE_LENGTH)   /* raise len 'til >= MIN */
 		chal_len <<= 1;
+#endif
 	
 	name_len = strlen(chal_name);
 	outlen = CHAP_HEADERLEN + sizeof (u_char) + chal_len + name_len;

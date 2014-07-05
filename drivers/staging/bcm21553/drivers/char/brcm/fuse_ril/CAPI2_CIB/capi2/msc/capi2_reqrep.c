@@ -133,6 +133,9 @@ static void CAPI2_InitDialogId(ClientInfo_t* clientInfo);
 
 static const RPC_XdrInfo_t CAPI2_ReqRep_dscrm[] = {
 	
+	/* Add phonebook message serialize/deserialize routine map */
+	{ MSG_PBK_READY_IND,_T("MSG_PBK_READY_IND"), (xdrproc_t)xdr_default_proc, REQRSP_MSG_EXT(0,NULL,NULL,0) },
+	
 #include "capi2_gen_union_map.h"
 	
 	/* Add other modules message to serialize/deserialize routine map */

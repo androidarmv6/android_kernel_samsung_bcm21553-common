@@ -1162,7 +1162,7 @@ void KRIL_StkSendTerminalRspHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp)
             break;
 
         case BCM_RESPCAPI2Cmd:
-            pdata->result = BCM_E_SUCCESS;
+            pdata->result = RIL_E_SUCCESS;
             pdata->handler_state = BCM_FinishCAPI2Cmd;
             break;
                     
@@ -1208,7 +1208,7 @@ void KRIL_StkSendEnvelopeCmdHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp)
             break;
 
         case BCM_RESPCAPI2Cmd:
-            pdata->result = BCM_E_SUCCESS;
+            pdata->result = RIL_E_SUCCESS;
             pdata->handler_state = BCM_FinishCAPI2Cmd;
             break;
                     
@@ -1260,7 +1260,7 @@ void KRIL_StkHandleCallSetupRequestedHandler(void *ril_cmd, Kril_CAPI2Info_t *ca
         }
 
         case BCM_RESPCAPI2Cmd:
-            pdata->result = BCM_E_SUCCESS;
+            pdata->result = RIL_E_SUCCESS;
             pdata->handler_state = BCM_FinishCAPI2Cmd;
             break;
                     
@@ -1313,7 +1313,7 @@ void KRIL_StkGetProfile(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp)
             
             HexDataToHexStr(stkprofile->stkprofile, terminal_profile_data, 
                 sizeof(terminal_profile_data)/sizeof(UInt8));
-            pdata->result = BCM_E_SUCCESS;
+            pdata->result = RIL_E_SUCCESS;
             
             pdata->handler_state = BCM_FinishCAPI2Cmd;
             break;
@@ -1367,7 +1367,7 @@ void KRIL_StkSetProfile(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp)
         }    
         
         case BCM_RESPCAPI2Cmd:
-            pdata->result = BCM_E_SUCCESS;
+            pdata->result = RIL_E_SUCCESS;
             pdata->handler_state = BCM_FinishCAPI2Cmd;
             break;
                     
@@ -1411,7 +1411,7 @@ void KRIL_StkService_Running(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp)  // gea
         }    
         
         case BCM_RESPCAPI2Cmd:
-            pdata->result = BCM_E_SUCCESS;
+            pdata->result = RIL_E_SUCCESS;
             pdata->handler_state = BCM_FinishCAPI2Cmd;
             break;
                     

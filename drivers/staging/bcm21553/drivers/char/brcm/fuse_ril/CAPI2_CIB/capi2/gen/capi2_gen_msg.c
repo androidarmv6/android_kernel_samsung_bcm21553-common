@@ -10374,14 +10374,3 @@ bool_t xdr_CAPI2_MNCC_CLIENT_FACILITY_IND_Rsp_t(void* xdrs, CAPI2_MNCC_CLIENT_FA
 	else
 		return FALSE;
 }
-bool_t xdr_CAPI2_PbkReadyInd_Rsp_t(void* xdrs, CAPI2_PbkReadyInd_Rsp_t *rsp)
-{
-	XDR_LOG(xdrs,"CAPI2_PbkReadyInd_Rsp_t")
-
-	if(
-		 xdr_pointer(xdrs, (char**)(void*)&rsp->val, sizeof( PBK_ENTRY_DATA_RSP_t ), xdr_PBK_ENTRY_DATA_RSP_t) &&
-	1)
-		return TRUE;
-	else
-		return FALSE;
-}

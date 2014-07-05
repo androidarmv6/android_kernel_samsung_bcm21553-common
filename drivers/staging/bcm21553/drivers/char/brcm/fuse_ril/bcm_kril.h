@@ -29,8 +29,6 @@
 extern "C" {
 #endif
 
-typedef void * BRIL_Token;
-
 // Structure data
 #define RESULT_BUFFER_LEN_MAX 4500//byte
 
@@ -55,7 +53,7 @@ typedef void * BRIL_Token;
 
 // for Response
 #define BCM_MAX_CALLS_NO        10
-#define BCM_MAX_PLMN_SEARCH     10
+#define MAX_PLMN_SEARCH         10
 #define MAX_PW_LENGTH           10
 #define BCM_MAX_SS_CLASS_SIZE   15	///< Maximum number of service classes returned by a query.
 #define PHONE_NUMBER_LENGTH_MAX 40
@@ -78,110 +76,6 @@ typedef void * BRIL_Token;
 #define PDP_PASSWORD_LEN_MAX 65
 #define L2P_STRING_LENGTH_MAX 6		//possible l2p values: PPP, M-xxxx, BRCM supports only PPP
 
-
-// for Android message structure identifier type
-typedef enum {
-    BCM_E_SUCCESS = 0,
-    BCM_E_RADIO_NOT_AVAILABLE = 1,
-    BCM_E_GENERIC_FAILURE = 2,
-    BCM_E_PASSWORD_INCORRECT = 3,
-    BCM_E_SIM_PIN2 = 4,
-    BCM_E_SIM_PUK2 = 5,
-    BCM_E_REQUEST_NOT_SUPPORTED = 6,
-    BCM_E_CANCELLED = 7,
-    BCM_E_OP_NOT_ALLOWED_DURING_VOICE_CALL = 8,
-    BCM_E_OP_NOT_ALLOWED_BEFORE_REG_TO_NW = 9,
-    BCM_E_SMS_SEND_FAIL_RETRY = 10,
-    BCM_E_SIM_ABSENT = 11,
-    BCM_E_SUBSCRIPTION_NOT_AVAILABLE = 12,
-    BCM_E_MODE_NOT_SUPPORTED = 13,
-    BCM_E_FDN_CHECK_FAILURE = 14,
-    BCM_E_ILLEGAL_SIM_OR_ME = 15
-} BRIL_Errno;
-
-typedef enum {
-    BCM_CALL_ACTIVE = 0,
-    BCM_CALL_HOLDING = 1,
-    BCM_CALL_DIALING = 2,    /* For MO only */
-    BCM_CALL_ALERTING = 3,   /* For MO only */
-    BCM_CALL_INCOMING = 4,   /* For MT only */
-    BCM_CALL_WAITING = 5     /* For MT only */
-} BRIL_CallState;
-
-typedef enum {
-    BCM_RADIO_STATE_OFF = 0,
-    BCM_RADIO_STATE_UNAVAILABLE = 1,
-    BCM_RADIO_STATE_SIM_NOT_READY = 2,
-    BCM_RADIO_STATE_SIM_LOCKED_OR_ABSENT = 3,
-    BCM_RADIO_STATE_SIM_READY = 4,
-    BCM_RADIO_STATE_RUIM_NOT_READY = 5,
-    BCM_RADIO_STATE_RUIM_READY = 6,
-    BCM_RADIO_STATE_RUIM_LOCKED_OR_ABSENT = 7,
-    BCM_RADIO_STATE_NV_NOT_READY = 8,
-    BCM_RADIO_STATE_NV_READY = 9
-} BRIL_RadioState;
-
-typedef enum {
-    BCM_CALL_FAIL_UNOBTAINABLE_NUMBER = 1,
-    BCM_CALL_FAIL_NORMAL = 16,
-    BCM_CALL_FAIL_BUSY = 17,
-    BCM_CALL_FAIL_CONGESTION = 34,
-    BCM_CALL_FAIL_ACM_LIMIT_EXCEEDED = 68,
-    BCM_CALL_FAIL_CALL_BARRED = 240,
-    BCM_CALL_FAIL_FDN_BLOCKED = 241,
-    BCM_CALL_FAIL_IMSI_UNKNOWN_IN_VLR = 242,
-    BCM_CALL_FAIL_IMEI_NOT_ACCEPTED = 243,
-    BCM_CALL_FAIL_CDMA_LOCKED_UNTIL_POWER_CYCLE = 1000,
-    BCM_CALL_FAIL_CDMA_DROP = 1001,
-    BCM_CALL_FAIL_CDMA_INTERCEPT = 1002,
-    BCM_CALL_FAIL_CDMA_REORDER = 1003,
-    BCM_CALL_FAIL_CDMA_SO_REJECT = 1004,
-    BCM_CALL_FAIL_CDMA_RETRY_ORDER = 1005,
-    BCM_CALL_FAIL_CDMA_ACCESS_FAILURE = 1006,
-    BCM_CALL_FAIL_CDMA_PREEMPTED = 1007,
-    BCM_CALL_FAIL_CDMA_NOT_EMERGENCY = 1008,
-    BCM_CALL_FAIL_CDMA_ACCESS_BLOCKED = 1009,
-    BCM_CALL_FAIL_ERROR_UNSPECIFIED = 0xffff
-} BRIL_LastCallFailCause;
-
-typedef enum {
-    BCM_PDP_FAIL_OPERATOR_BARRED = 0x08,
-    BCM_PDP_FAIL_INSUFFICIENT_RESOURCES = 0x1A,
-    BCM_PDP_FAIL_MISSING_UKNOWN_APN = 0x1B,
-    BCM_PDP_FAIL_UNKNOWN_PDP_ADDRESS_TYPE = 0x1C,
-    BCM_PDP_FAIL_USER_AUTHENTICATION = 0x1D,
-    BCM_PDP_FAIL_ACTIVATION_REJECT_GGSN = 0x1E,
-    BCM_PDP_FAIL_ACTIVATION_REJECT_UNSPECIFIED = 0x1F,
-    BCM_PDP_FAIL_SERVICE_OPTION_NOT_SUPPORTED = 0x20,
-    BCM_PDP_FAIL_SERVICE_OPTION_NOT_SUBSCRIBED = 0x21,
-    BCM_PDP_FAIL_SERVICE_OPTION_OUT_OF_ORDER = 0x22,
-    BCM_PDP_FAIL_NSAPI_IN_USE      = 0x23,
-    BCM_PDP_FAIL_PROTOCOL_ERRORS   = 0x6F,
-    BCM_PDP_FAIL_ERROR_UNSPECIFIED = 0xffff,
-    BCM_PDP_FAIL_REGISTRATION_FAIL = -1,
-    BCM_PDP_FAIL_GPRS_REGISTRATION_FAIL = -2,
-} BRIL_LastDataCallActivateFailCause;
-
-typedef enum {
-  BCM_APPTYPE_UNKNOWN = 0,
-  BCM_APPTYPE_SIM     = 1,
-  BCM_APPTYPE_USIM    = 2,
-  BCM_APPTYPE_RUIM    = 3,
-  BCM_APPTYPE_CSIM    = 4
-} BRIL_AppType;
-
-typedef enum {
-    BCM_SIM_FILE_UPDATE = 0,
-    BCM_SIM_INIT = 1,
-    BCM_SIM_RESET = 2
-} BRIL_SimRefreshResult;
-
-#define BCM_RIL_RESTRICTED_STATE_NONE           0x00
-#define BCM_RIL_RESTRICTED_STATE_CS_EMERGENCY   0x01
-#define BCM_RIL_RESTRICTED_STATE_CS_NORMAL      0x02
-#define BCM_RIL_RESTRICTED_STATE_CS_ALL         0x04
-#define BCM_RIL_RESTRICTED_STATE_PS_ALL         0x10
-
 // for Notification
 
 
@@ -193,7 +87,7 @@ typedef enum {
 typedef struct
 {
     unsigned short client;  //Client ID
-    BRIL_Token t;          //TBD
+    RIL_Token t;            //TBD
     unsigned long CmdID;    //URIL Command ID
     void *data;             // pointer to user buffer
     size_t datalen;         // length of user buffer
@@ -203,9 +97,9 @@ typedef struct
 typedef struct 
 {
     unsigned short client; //Client ID
-    BRIL_Token t;          //TBD
+    RIL_Token t;           //TBD
     unsigned long CmdID;   //URIL Command ID
-    BRIL_Errno result;     //Response result
+    RIL_Errno result;      //Response result
     void *data;            //pointer to user buffer
     size_t datalen;        //length of user buffer
 } KRIL_Response_t;
@@ -419,16 +313,13 @@ typedef enum {
     BRIL_HOOK_SET_PREFDATA, // To Set the which SIM need to support preferred data connection.
     BRIL_HOOK_QUERY_SIM_PIN_REMAINING,
     BRIL_HOOK_GET_SIM_VOLTAGE,
-    BRIL_HOOK_GENERIC_SIM_ACCESS,
-    BRIL_HOOK_EAP_SIM_AUTHENTICATION,	// BCM_EAP_SIM
-    BRIL_HOOK_EAP_AKA_AUTHENTICATION	 
-
+    BRIL_HOOK_GENERIC_SIM_ACCESS
 } HOOK_msgType;
 
 
 // for response
 typedef struct {
-    BRIL_CallState  state;
+    RIL_CallState   state;
     int             index;      /* GSM Index for use with, eg, AT+CHLD */
     int             toa;        /* type of address, eg 145 = intl */
     char            isMpty;     /* nonzero if is mpty call */
@@ -555,7 +446,7 @@ typedef struct
 typedef struct
 {
     unsigned char          num_of_plmn;
-    KrilAvailablePlmnList_t  available_plmn[BCM_MAX_PLMN_SEARCH];
+    KrilAvailablePlmnList_t  available_plmn[MAX_PLMN_SEARCH];
 } KrilNetworkList_t;
 
 
@@ -612,7 +503,7 @@ typedef struct
 typedef enum {
     SIM_ABSENT = 0,
     SIM_NOT_READY = 1,
-    SIM_READY = 2, /* SIM_READY means the radio state is BCM_RADIO_STATE_SIM_READY */
+    SIM_READY = 2, /* SIM_READY means the radio state is RADIO_STATE_SIM_READY */
     SIM_PIN = 3,
     SIM_PIN2 = 4,
     SIM_PUK = 5,
@@ -635,7 +526,7 @@ typedef enum {
 
 typedef struct
 {
-	BRIL_Errno result;		    ///< SIM access result
+	RIL_Errno result;		    ///< SIM access result
 	int remain_attempt;		  ///< Facility lock status.
 } KrilSimPinResult_t;
 
@@ -646,19 +537,19 @@ typedef struct
     SIM_Status         pin2_status;
     int                pin1_enable;
     int                pin2_enable;  
-    BRIL_AppType       app_type;
+    RIL_AppType        app_type;
 } KrilSimStatusResult_t;
 
 
 typedef struct
 {
-	BRIL_Errno result;		///< SIM access result
+	RIL_Errno result;		///< SIM access result
 	int lock;		        ///< Facility lock status.
 } KrilFacLock_t;
 
 
 typedef struct {
-    BRIL_Errno  result;		///< SIM access result
+    RIL_Errno  result;		///< SIM access result
     int  command;
     int  fileid;
     int  sw1;
@@ -670,14 +561,14 @@ typedef struct {
 
 typedef struct
 {
-    BRIL_Errno result;		                ///< SIM access result
+    RIL_Errno result;		                ///< SIM access result
     char imsi[IMSI_DIGITS+1];		  ///< IMSI.
 } KrilImsiData_t;
 
 
 typedef struct
 {
-    BRIL_Errno result;		                ///< SIM access result
+    RIL_Errno result;		                ///< SIM access result
     char imei[IMEI_DIGITS+1];		        ///< IMEI (+1 for null termination)
     unsigned char  imeisv[3];		        ///< IMEISV (+1 for null termination)
 } KrilImeiData_t;
@@ -705,7 +596,7 @@ typedef struct {
 
 
 typedef struct {
-    BRIL_Errno result;
+    RIL_Errno result;
     unsigned char index;
 } KrilMsgIndexInfo_t;
 
@@ -831,8 +722,8 @@ typedef struct {
 }KrilStkCallCtrlResult_t;				
 
 // Broadcom define Message data
-//#define BRCM_URIL_REQUEST_BASE  (URILC_REQUEST_BASE - 100)
-//#define BRCM_URIL_UNSOLICITED_BASE  (RIL_UNSOL_RESPONSE_BASE + 1000)
+#define BRCM_URIL_REQUEST_BASE  (URILC_REQUEST_BASE - 100)
+#define BRCM_URIL_UNSOLICITED_BASE  (RIL_UNSOL_RESPONSE_BASE + 1000)
 
 
 typedef struct {
@@ -840,6 +731,21 @@ typedef struct {
     char   simecclist[BCM_MAX_DIGITS];
 } Kril_SIMEmergency;
 
+
+typedef struct {				
+ int bCBEnabled; /* CB service state */				
+ int selectedId; /* CBMI Identifier selected */				
+ int msgIdMaxCount; /* CB Channel List Max Count */				
+ int msgIdCount; /* CB message ID count */				
+ int msgIDs[CHNL_IDS_SIZE]; /* CB message ID information*/
+} Kril_Cell_Broadcast_config;	
+
+
+typedef struct {
+	int cbType; // 0x01 :GSM , 0x02:UMTS
+	int message_length;
+	char message[GSM_SMS_TPDU_STR_MAX_SIZE]; //reference : 3GPP TS 23.041 9.4.1, 9.4.2
+} Kril_Cell_Broadcast_message;	
 
 
 /**
@@ -868,188 +774,130 @@ typedef struct {
 
 typedef enum {
     BRIL_HOOK_UNSOL_SIM_ERROR,        // Notify user SIM Card is error.
-    BRIL_HOOK_UNSOL_SIM_DATA,		  //Notify user SIM Data for IMSI/GID1/GID2
-    BRIL_HOOK_UNSOL_SIM_MSISDN_DATA     //Notify user SIM Data for MSISDN
+    BRIL_HOOK_UNSOL_SIM_DATA		  //Notify user SIM Data for IMSI/GID1/GID2
 } HOOK_unsol_msgType;
 
 
+typedef struct { 				
+ unsigned long total_cnt; /*  the record index of the  message */				
+ unsigned long used_cnt; /*  the record index of the  message */				
+}KrilStoredMsgCount;				
 
-/* message id defination for request 
+typedef struct { 				
+ unsigned long length; /*  the record index of the  message */				
+ char pdu[180*2];
+}KrilSMSfromSIM;				
+
+
+// -----------------------------------------------------------------------------
+//
+// @doc EXTERNAL
+//
+// @ SRIL RIL_REQUEST_LOCK_INFO
+//
+// @comm None
+//
+// -----------------------------------------------------------------------------
+
+typedef enum
+{
+	KRIL_LOCK_PIN1,
+	KRIL_LOCK_PIN2,
+	KRIL_LOCK_PUK2	
+}KrilLockType_t;
+
+typedef enum
+{
+	KRIL_PIN_NOT_NEED = 0x00,
+	KRIL_PIN = 0x01,
+	KRIL_PUK = 0x02,
+	KRIL_PIN2 = 0x03,
+	KRIL_PUK2 = 0x04,
+	KRIL_PERM_BLOCKED = 0x05,
+	KRIL_PIN2_DISABLE = 0x06			 
+}KrilLockStatus_t;
+
+typedef struct
+{
+	int lock_type;
+	int lock_status;
+	int remaining_attempt;	
+}KrilLockInfo_t;
+
+/*+ Ciphering Mode sh0515.lee /Integrity Mode sh0515.lee +*/
+typedef enum
+{
+	KRIL_CIPHERING_MODE,
+	KRIL_INTEGRATE_MODE,
+
+	KRIL_CLASSMARK_ID_END	
+} KrilClassMarkId_t;
+
+typedef struct
+{
+	KrilClassMarkId_t classmark_id;
+	union
+	{
+		int					is_supported;
+		// can add other ClassMark setting below
+	}data_u;
+}KrilStackNvramClassMark_t;
+/*- Ciphering Mode sh0515.lee /Integrity Mode sh0515.lee -*/
+
+
+/*+ Band Selection sh0515.lee +*/
+typedef struct
+{
+	int curr_rat;
+	int new_band;
+}KrilSrilSetBand_t;
+/*- Band Selection sh0515.lee -*/
+
+#define	PB_NUM_MAX	42
+#define	PB_ALPHA_MAX	82
+#define	PB_EMAIL_MAX	82
+
+typedef struct 
+{
+	long			index;
+	long			next_index;
+	unsigned char	number[PB_NUM_MAX];
+	unsigned long   length_number;
+	unsigned long	num_datatpye;
+	unsigned char	name[ PB_ALPHA_MAX ];
+	unsigned long   length_name;
+	unsigned long	name_datatpye;
+	unsigned char	email[ PB_EMAIL_MAX ];
+	unsigned long   length_email;
+	unsigned long	email_datatpye;
+
+}KrilPhonebookGetEntry_t;	//HJKIM_ADN
+
+typedef struct 
+{
+	int command;   
+	int fileid;    
+	int index;		
+	char alphaTag[PB_ALPHA_MAX];   
+	int alphaTagDCS;
+	int alphaTagLength;
+	char number[PB_NUM_MAX];    
+	int numberLength;	
+	char email[PB_EMAIL_MAX];
+	int emailTagDCS;	//HJKIM_emailDCS
+	int emailLength;
+	char pin2[9];    
+} KrilPhonebookAccess_t;	//HJKIM_ADN
+
+/**
+ * BRIL_UNSOL_EMERGENCY_NUMBER
  *
- * Android request base start :: BRCM_RIL_REQUEST_GET_SIM_STATUS (1)
- * Android notification base start :: BRCM_RIL_UNSOL_RESPONSE_BASE (1000)
- * The request and notification value of constants defined are same as \\hardware\ril\include\telephony\ril.h
+ * Reports emergency number in SIM.
  *
- * AT request message base start :: URILC_REQUEST_BASE => BRCM_RIL_UNSOL_RESPONSE_BASE - 100  (900)
- * AT notification message base start :: URILC_UNSOL_RESPONSE_BASE => BRCM_RIL_UNSOL_RESPONSE_BASE + 500 (1500)
- * IMPORTANT NOTE: The request and notification value of constants defined here should range between 
- * {URILC_REQUEST_BASE+1....URILC_REQUEST_BASE+99} and {URILC_UNSOL_RESPONSE_BASE+1....URILC_UNSOL_RESPONSE_BASE+99} 
- * in order to avoid conflict with constants defined in \\hardware\ril\include\telephony\ril.h
- *
- * BRCM URIL message base start :: BRCM_URIL_REQUEST_BASE => BRCM_RIL_UNSOL_RESPONSE_BASE - 200 (800)
- * BRCM URIL notification message base start :: BRCM_URIL_UNSOLICITED_BASE => BRCM_RIL_UNSOL_RESPONSE_BASE + 600 (1600)
- * IMPORTANT NOTE: The request and notification value of constants defined here should range between 
- * {BRCM_URIL_REQUEST_BASE+1....BRCM_URIL_REQUEST_BASE+99} and {BRCM_URIL_UNSOLICITED_BASE+1....BRCM_URIL_UNSOLICITED_BASE+99}
- * in order to avoid conflict with constants defined in \\hardware\ril\include\telephony\ril.h
- *
- * VT request message base start :: BRCM_RIL_REQUEST_VT_BASE => BRCM_RIL_UNSOL_RESPONSE_BASE - 300 (700)
- * VT request notification base start :: BRCM_RIL_UNSOL_RESPONSE_VT_BASE => BRCM_RIL_UNSOL_RESPONSE_BASE + 700 (1700)
- * IMPORTANT NOTE: The request and notification value of constants defined here should range between
- * {BRCM_RIL_REQUEST_VT_BASE+1....BRCM_RIL_REQUEST_VT_BASE+99} and {BRCM_RIL_UNSOL_RESPONSE_VT_BASE+1....BRCM_RIL_UNSOL_RESPONSE_VT_BASE+99}
- * in order to avoid conflict with constants defined in \\hardware\ril\include\telephony\ril.h
- *
- * AGPS request message base start :: RIL_REQUEST_AGPS_BASE => BRCM_RIL_UNSOL_RESPONSE_BASE - 400 (600)
- * AGPS notification message base start :: RIL_UNSOL_RESP_AGPS_BASE	 => BRCM_RIL_UNSOL_RESPONSE_BASE + 800 (1800)
- * IMPORTANT NOTE: The request and notification value of constants defined here should range between 
- * {RIL_REQUEST_AGPS_BASE+1....RIL_REQUEST_AGPS_BASE+99} and {RIL_UNSOL_RESP_AGPS_BASE+1....RIL_UNSOL_RESP_AGPS_BASE+99}
- * in order to avoid conflict with constants defined in \\hardware\ril\include\telephony\ril.h
+ * "data" is a char number[BCM_MAX_DIGITS]
  *
  */
-
-
-// Android request defination
-#define BRCM_RIL_REQUEST_GET_SIM_STATUS 1
-#define BRCM_RIL_REQUEST_ENTER_SIM_PIN 2
-#define BRCM_RIL_REQUEST_ENTER_SIM_PUK 3
-#define BRCM_RIL_REQUEST_ENTER_SIM_PIN2 4
-#define BRCM_RIL_REQUEST_ENTER_SIM_PUK2 5
-#define BRCM_RIL_REQUEST_CHANGE_SIM_PIN 6
-#define BRCM_RIL_REQUEST_CHANGE_SIM_PIN2 7
-#define BRCM_RIL_REQUEST_ENTER_NETWORK_DEPERSONALIZATION 8
-#define BRCM_RIL_REQUEST_GET_CURRENT_CALLS 9
-#define BRCM_RIL_REQUEST_DIAL 10
-#define BRCM_RIL_REQUEST_GET_IMSI 11
-#define BRCM_RIL_REQUEST_HANGUP 12
-#define BRCM_RIL_REQUEST_HANGUP_WAITING_OR_BACKGROUND 13
-#define BRCM_RIL_REQUEST_HANGUP_FOREGROUND_RESUME_BACKGROUND 14
-#define BRCM_RIL_REQUEST_SWITCH_WAITING_OR_HOLDING_AND_ACTIVE 15
-#define BRCM_RIL_REQUEST_SWITCH_HOLDING_AND_ACTIVE 15
-#define BRCM_RIL_REQUEST_CONFERENCE 16
-#define BRCM_RIL_REQUEST_UDUB 17
-#define BRCM_RIL_REQUEST_LAST_CALL_FAIL_CAUSE 18
-#define BRCM_RIL_REQUEST_SIGNAL_STRENGTH 19
-#define BRCM_RIL_REQUEST_REGISTRATION_STATE 20
-#define BRCM_RIL_REQUEST_GPRS_REGISTRATION_STATE 21
-#define BRCM_RIL_REQUEST_OPERATOR 22
-#define BRCM_RIL_REQUEST_RADIO_POWER 23
-#define BRCM_RIL_REQUEST_DTMF 24
-#define BRCM_RIL_REQUEST_SEND_SMS 25
-#define BRCM_RIL_REQUEST_SEND_SMS_EXPECT_MORE 26
-#define BRCM_RIL_REQUEST_SETUP_DATA_CALL 27
-#define BRCM_RIL_REQUEST_SIM_IO 28
-#define BRCM_RIL_REQUEST_SEND_USSD 29
-#define BRCM_RIL_REQUEST_CANCEL_USSD 30
-#define BRCM_RIL_REQUEST_GET_CLIR 31
-#define BRCM_RIL_REQUEST_SET_CLIR 32
-#define BRCM_RIL_REQUEST_QUERY_CALL_FORWARD_STATUS 33
-#define BRCM_RIL_REQUEST_SET_CALL_FORWARD 34
-#define BRCM_RIL_REQUEST_QUERY_CALL_WAITING 35
-#define BRCM_RIL_REQUEST_SET_CALL_WAITING 36
-#define BRCM_RIL_REQUEST_SMS_ACKNOWLEDGE  37
-#define BRCM_RIL_REQUEST_GET_IMEI 38
-#define BRCM_RIL_REQUEST_GET_IMEISV 39
-#define BRCM_RIL_REQUEST_ANSWER 40
-#define BRCM_RIL_REQUEST_DEACTIVATE_DATA_CALL 41
-#define BRCM_RIL_REQUEST_QUERY_FACILITY_LOCK 42
-#define BRCM_RIL_REQUEST_SET_FACILITY_LOCK 43
-#define BRCM_RIL_REQUEST_CHANGE_BARRING_PASSWORD 44
-#define BRCM_RIL_REQUEST_QUERY_NETWORK_SELECTION_MODE 45
-#define BRCM_RIL_REQUEST_SET_NETWORK_SELECTION_AUTOMATIC 46
-#define BRCM_RIL_REQUEST_SET_NETWORK_SELECTION_MANUAL 47
-#define BRCM_RIL_REQUEST_QUERY_AVAILABLE_NETWORKS 48
-#define BRCM_RIL_REQUEST_DTMF_START 49
-#define BRCM_RIL_REQUEST_DTMF_STOP 50
-#define BRCM_RIL_REQUEST_BASEBAND_VERSION 51
-#define BRCM_RIL_REQUEST_SEPARATE_CONNECTION 52
-#define BRCM_RIL_REQUEST_SET_MUTE 53
-#define BRCM_RIL_REQUEST_GET_MUTE 54
-#define BRCM_RIL_REQUEST_QUERY_CLIP 55
-#define BRCM_RIL_REQUEST_LAST_DATA_CALL_FAIL_CAUSE 56
-#define BRCM_RIL_REQUEST_DATA_CALL_LIST 57
-#define BRCM_RIL_REQUEST_RESET_RADIO 58
-#define BRCM_RIL_REQUEST_OEM_HOOK_RAW 59
-#define BRCM_RIL_REQUEST_OEM_HOOK_STRINGS 60
-#define BRCM_RIL_REQUEST_SCREEN_STATE 61
-#define BRCM_RIL_REQUEST_SET_SUPP_SVC_NOTIFICATION 62
-#define BRCM_RIL_REQUEST_WRITE_SMS_TO_SIM 63
-#define BRCM_RIL_REQUEST_DELETE_SMS_ON_SIM 64
-#define BRCM_RIL_REQUEST_SET_BAND_MODE 65
-#define BRCM_RIL_REQUEST_QUERY_AVAILABLE_BAND_MODE 66
-#define BRCM_RIL_REQUEST_STK_GET_PROFILE 67
-#define BRCM_RIL_REQUEST_STK_SET_PROFILE 68
-#define BRCM_RIL_REQUEST_STK_SEND_ENVELOPE_COMMAND 69
-#define BRCM_RIL_REQUEST_STK_SEND_TERMINAL_RESPONSE 70
-#define BRCM_RIL_REQUEST_STK_HANDLE_CALL_SETUP_REQUESTED_FROM_SIM 71
-#define BRCM_RIL_REQUEST_EXPLICIT_CALL_TRANSFER 72
-#define BRCM_RIL_REQUEST_SET_PREFERRED_NETWORK_TYPE 73
-#define BRCM_RIL_REQUEST_GET_PREFERRED_NETWORK_TYPE 74
-#define BRCM_RIL_REQUEST_GET_NEIGHBORING_CELL_IDS 75
-#define BRCM_RIL_REQUEST_SET_LOCATION_UPDATES 76
-#define BRCM_RIL_REQUEST_CDMA_SET_SUBSCRIPTION 77
-#define BRCM_RIL_REQUEST_CDMA_SET_ROAMING_PREFERENCE 78
-#define BRCM_RIL_REQUEST_CDMA_QUERY_ROAMING_PREFERENCE 79
-#define BRCM_RIL_REQUEST_SET_TTY_MODE 80
-#define BRCM_RIL_REQUEST_QUERY_TTY_MODE 81
-#define BRCM_RIL_REQUEST_CDMA_SET_PREFERRED_VOICE_PRIVACY_MODE 82
-#define BRCM_RIL_REQUEST_CDMA_QUERY_PREFERRED_VOICE_PRIVACY_MODE 83
-#define BRCM_RIL_REQUEST_CDMA_FLASH 84
-#define BRCM_RIL_REQUEST_CDMA_BURST_DTMF 85
-#define BRCM_RIL_REQUEST_CDMA_VALIDATE_AND_WRITE_AKEY 86
-#define BRCM_RIL_REQUEST_CDMA_SEND_SMS 87
-#define BRCM_RIL_REQUEST_CDMA_SMS_ACKNOWLEDGE 88
-#define BRCM_RIL_REQUEST_GSM_GET_BROADCAST_SMS_CONFIG 89
-#define BRCM_RIL_REQUEST_GSM_SET_BROADCAST_SMS_CONFIG 90
-#define BRCM_RIL_REQUEST_GSM_SMS_BROADCAST_ACTIVATION 91
-#define BRCM_RIL_REQUEST_CDMA_GET_BROADCAST_SMS_CONFIG 92
-#define BRCM_RIL_REQUEST_CDMA_SET_BROADCAST_SMS_CONFIG 93
-#define BRCM_RIL_REQUEST_CDMA_SMS_BROADCAST_ACTIVATION 94
-#define BRCM_RIL_REQUEST_CDMA_SUBSCRIPTION 95
-#define BRCM_RIL_REQUEST_CDMA_WRITE_SMS_TO_RUIM 96
-#define BRCM_RIL_REQUEST_CDMA_DELETE_SMS_ON_RUIM 97
-#define BRCM_RIL_REQUEST_DEVICE_IDENTITY 98
-#define BRCM_RIL_REQUEST_EXIT_EMERGENCY_CALLBACK_MODE 99
-#define BRCM_RIL_REQUEST_GET_SMSC_ADDRESS 100
-#define BRCM_RIL_REQUEST_SET_SMSC_ADDRESS 101
-#define BRCM_RIL_REQUEST_REPORT_SMS_MEMORY_STATUS 102
-#define BRCM_RIL_REQUEST_REPORT_STK_SERVICE_IS_RUNNING 103
-
-// Android notification defination
-#define BRCM_RIL_UNSOL_RESPONSE_BASE 1000
-#define BRCM_RIL_UNSOL_RESPONSE_RADIO_STATE_CHANGED 1000
-#define BRCM_RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED 1001
-#define BRCM_RIL_UNSOL_RESPONSE_NETWORK_STATE_CHANGED 1002
-#define BRCM_RIL_UNSOL_RESPONSE_NEW_SMS 1003
-#define BRCM_RIL_UNSOL_RESPONSE_NEW_SMS_STATUS_REPORT 1004
-#define BRCM_RIL_UNSOL_RESPONSE_NEW_SMS_ON_SIM 1005
-#define BRCM_RIL_UNSOL_ON_USSD 1006
-#define BRCM_RIL_UNSOL_ON_USSD_REQUEST 1007
-#define BRCM_RIL_UNSOL_NITZ_TIME_RECEIVED  1008
-#define BRCM_RIL_UNSOL_SIGNAL_STRENGTH  1009
-#define BRCM_RIL_UNSOL_DATA_CALL_LIST_CHANGED 1010
-#define BRCM_RIL_UNSOL_SUPP_SVC_NOTIFICATION 1011
-#define BRCM_RIL_UNSOL_STK_SESSION_END 1012
-#define BRCM_RIL_UNSOL_STK_PROACTIVE_COMMAND 1013
-#define BRCM_RIL_UNSOL_STK_EVENT_NOTIFY 1014
-#define BRCM_RIL_UNSOL_STK_CALL_SETUP 1015
-#define BRCM_RIL_UNSOL_SIM_SMS_STORAGE_FULL 1016
-#define BRCM_RIL_UNSOL_SIM_REFRESH 1017
-#define BRCM_RIL_UNSOL_CALL_RING 1018
-#define BRCM_RIL_UNSOL_RESPONSE_SIM_STATUS_CHANGED 1019
-#define BRCM_RIL_UNSOL_RESPONSE_CDMA_NEW_SMS 1020
-#define BRCM_RIL_UNSOL_RESPONSE_NEW_BROADCAST_SMS 1021
-#define BRCM_RIL_UNSOL_CDMA_RUIM_SMS_STORAGE_FULL 1022
-#define BRCM_RIL_UNSOL_RESTRICTED_STATE_CHANGED 1023
-#define BRCM_RIL_UNSOL_ENTER_EMERGENCY_CALLBACK_MODE 1024
-#define BRCM_RIL_UNSOL_CDMA_CALL_WAITING 1025
-#define BRCM_RIL_UNSOL_CDMA_OTA_PROVISION_STATUS 1026
-#define BRCM_RIL_UNSOL_CDMA_INFO_REC 1027
-#define BRCM_RIL_UNSOL_OEM_HOOK_RAW 1028
-#define BRCM_RIL_UNSOL_RINGBACK_TONE 1029
-#define BRCM_RIL_UNSOL_RESEND_INCALL_MUTE 1030
-
-
-// URIL request defination
-#define BRCM_URIL_REQUEST_BASE  (BRCM_RIL_UNSOL_RESPONSE_BASE - 200)
+#define BRIL_UNSOL_EMERGENCY_NUMBER (BRCM_URIL_UNSOLICITED_BASE+1)
 
 /**
  * BRIL_REQUEST_KRIL_INIT
@@ -1072,51 +920,10 @@ typedef enum {
  */
 #define BRIL_REQUEST_KRIL_INIT (BRCM_URIL_REQUEST_BASE + 1)
 
-
-// URIL notification defination
-#define BRCM_URIL_UNSOLICITED_BASE  (BRCM_RIL_UNSOL_RESPONSE_BASE + 600)
-
-/**
- * BRIL_UNSOL_EMERGENCY_NUMBER
- *
- * Reports emergency number in SIM.
- *
- * "data" is a char number[BCM_MAX_DIGITS]
- *
- */
-#define BRIL_UNSOL_EMERGENCY_NUMBER (BRCM_URIL_UNSOLICITED_BASE+1)
-
-
-#ifdef VIDEO_TELEPHONY_ENABLE
-// VT request defination
-#define BRCM_RIL_REQUEST_VT_BASE                   BRCM_RIL_UNSOL_RESPONSE_BASE - 300
-#define BRCM_RIL_REQUEST_DIAL_VT                   BRCM_RIL_REQUEST_VT_BASE + 1
-#define BRCM_RIL_REQUEST_ANSWER_VT                 BRCM_RIL_REQUEST_VT_BASE + 2
-#define BRCM_RIL_REQUEST_HANGUP_VT                 BRCM_RIL_REQUEST_VT_BASE + 3
-#define BRCM_RIL_REQUEST_MODIFY_VT                 BRCM_RIL_REQUEST_VT_BASE + 4
-#define BRCM_RIL_REQUEST_CONFIRM_VT                BRCM_RIL_REQUEST_VT_BASE + 5
-
-// VT notification defination
-#define BRCM_RIL_UNSOL_RESPONSE_VT_BASE                               BRCM_RIL_UNSOL_RESPONSE_BASE + 700
-#define BRCM_RIL_UNSOL_RESPONSE_VT_CALL_EVENT_CALL_CONF               BRCM_RIL_UNSOL_RESPONSE_VT_BASE + 1
-#define BRCM_RIL_UNSOL_RESPONSE_VT_CALL_EVENT_PROGRESS_INFO_IND       BRCM_RIL_UNSOL_RESPONSE_VT_BASE + 2
-#define BRCM_RIL_UNSOL_RESPONSE_VT_CALL_EVENT_CONNECT                 BRCM_RIL_UNSOL_RESPONSE_VT_BASE + 3
-#define BRCM_RIL_UNSOL_RESPONSE_VT_CALL_EVENT_SETUP_IND               BRCM_RIL_UNSOL_RESPONSE_VT_BASE + 4
-#define BRCM_RIL_UNSOL_RESPONSE_VT_CALL_EVENT_INCOM                   BRCM_RIL_UNSOL_RESPONSE_VT_BASE + 5
-#define BRCM_RIL_UNSOL_RESPONSE_VT_CALL_EVENT_END                     BRCM_RIL_UNSOL_RESPONSE_VT_BASE + 6
-#define BRCM_RIL_UNSOL_RESPONSE_VT_CALL_EVENT_MODIFY_IND              BRCM_RIL_UNSOL_RESPONSE_VT_BASE + 7
-#define BRCM_RIL_UNSOL_RESPONSE_VT_CALL_EVENT_MODIFY_REQ              BRCM_RIL_UNSOL_RESPONSE_VT_BASE + 8
-#define BRCM_RIL_UNSOL_RESPONSE_VT_CALL_EVENT_MODIFY_COMPLETE_CONF    BRCM_RIL_UNSOL_RESPONSE_VT_BASE + 9
-#define BRCM_RIL_UNSOL_RESPONSE_VT_CALL_EVENT_MODIFY_RES              BRCM_RIL_UNSOL_RESPONSE_VT_BASE + 10
-#define BRCM_RIL_UNSOL_RESPONSE_VT_CALL_EVENT_UNKNOWN                 BRCM_RIL_UNSOL_RESPONSE_VT_BASE + 11
-#endif //VIDEO_TELEPHONY_ENABLE
-
-
-
 //AGPS
 #ifdef BRCM_AGPS_CONTROL_PLANE_ENABLE
 
-#define RIL_REQUEST_AGPS_BASE				BRCM_RIL_UNSOL_RESPONSE_BASE - 400
+#define RIL_REQUEST_AGPS_BASE				BRCM_URIL_REQUEST_BASE + 2
 
 /**
  * RIL_REQUEST_AGPS_SEND_UPLINK
@@ -1136,7 +943,7 @@ typedef enum {
 #define RIL_REQUEST_AGPS_RRC_MEAS_CTRL_FAILURE		RIL_REQUEST_AGPS_BASE+2
 #define RIL_REQUEST_AGPS_RRC_STATUS					RIL_REQUEST_AGPS_BASE+3
 
-#define RIL_UNSOL_RESP_AGPS_BASE					BRCM_RIL_UNSOL_RESPONSE_BASE + 800
+#define RIL_UNSOL_RESP_AGPS_BASE					BRCM_URIL_UNSOLICITED_BASE + 2
 
 /**
  * RIL_UNSOL_RESP_AGPS_DLINK_DATA_IND
@@ -1235,10 +1042,6 @@ typedef struct
 #define FLASH_WRITE_NV_DATA( _Buf_, _Idx_ )	Flash_Write_NV_Data( _Buf_, _Idx_ )
 //SAMSUNG_SELLOUT_FEATURE
 
-
-#ifdef OEM_RIL_ENABLE
-#include "bcm_kril_ext.h"
-#endif
 
 #ifdef __cplusplus
 }

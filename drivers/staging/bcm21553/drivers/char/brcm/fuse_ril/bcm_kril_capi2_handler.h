@@ -50,6 +50,7 @@
 #define BCM_SATK_SEND_ENABLE_7BIT_CONVERSIONS	0x116
 #define BCM_SATK_SEND_SETUP_EVENT_LIST_CTR	 0x117
 #define BCM_CFG_SIM_LOCK_SUPPORTED		 0x0118
+
 #endif
 
 //++ JSHAN Attach for next power on
@@ -286,28 +287,6 @@
 //
 // @doc EXTERNAL
 //
-// @Do Authentication
-//
-// @comm None
-//
-// -----------------------------------------------------------------------------
-
-// BCM_EAP_SIM
-#ifdef BCM_RIL_FOR_EAP_SIM 
-#define BCM_SIM_DoGSMAuthentication               0x0100
-#define BCM_SIM_SelectMF                          0x0101
-#define BCM_SIM_SelectDedicatedFile               0x0102
-#define BCM_SIM_GetAdditionDataReq                0x0103
-#define BCM_SIM_DoUSimAuthentication              0x0104
-#define BCM_SIM_SelectMFUsim                      0x0105
-#define BCM_SIM_SelectDedicatedFileOfADF          0x0106
-#endif
-
-
-// -----------------------------------------------------------------------------
-//
-// @doc EXTERNAL
-//
 // @Restricted SIM access
 //
 // @comm None
@@ -456,7 +435,6 @@
 #define BCM_GET_HSUPA_PHY_CATEGORY 0x104
 #define BCM_SET_HSDPA_PHY_CATEGORY 0x105
 
-#define BCM_MS_SetPlmnSelect			0x106
 // for Call Control
 void KRIL_GetCurrentCallHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp);
 void KRIL_DialHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp);
@@ -550,11 +528,6 @@ void KRIL_SimIOHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp);
 void KRIL_QuerySimPinRemainingHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp);
 void KRIL_GenericSimAccessHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp);
 
-// BCM_EAP_SIM
-#ifdef BCM_RIL_FOR_EAP_SIM 
-void KRIL_GsmSimAuthenticationHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp);
-void KRIL_USimAuthenticationHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp);
-#endif
 
 // for STK
 void KRIL_StkSendTerminalRspHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp);

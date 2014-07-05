@@ -31,7 +31,6 @@ static Boolean sHspaChnlAlloc = FALSE;
 
 Boolean StkCall= FALSE;  // gearn setup call 
 Boolean StkIcon= FALSE;  // gearn not support icon TR
-Boolean Msisdnck= FALSE;  // solokou check MSISDN
 
 #ifdef BRCM_AGPS_CONTROL_PLANE_ENABLE
 #include "capi2_lcs_cplane_api.h"
@@ -94,7 +93,6 @@ typedef enum
 char satk_setup_menu_tlv_data_string[MAX_TLV_STRING_LENGTH];
 UInt16 satk_setup_menu_tlv_length = 0;
 
-extern void KRIL_HandleVoiceCallReleased( UInt8 inReleasedCallIndex );
 
 
 #ifdef CONFIG_CPU_FREQ_GOV_BCM21553
@@ -2017,6 +2015,7 @@ UInt16 ParseUssdString(UInt8 *simple_tlv_ptr, SATKNum_t* num)
     UInt16 total_byte  = 0;
     UInt8  *tlv_ptr = simple_tlv_ptr;
 	UInt8* tlv_len_ptr = NULL;
+	UInt16 septet_len = 0;
 	UInt8 septet_string[MAX_SIMPLE_TLV_DATA_LENGTH];
 	UInt8 total_ussd_len = 0;
     
@@ -2025,7 +2024,19 @@ UInt16 ParseUssdString(UInt8 *simple_tlv_ptr, SATKNum_t* num)
     tlv_ptr += 1;
     total_byte += 1;
     
-    total_ussd_len = num->len + 1; //1 byte for DCS
+    
+    
+	// convert from octets to septets for CB default alphabet
+    if (KRIL_GetCharacterSet(num->dcs) == KRIL_CHARACTER_SET_GSM_7_BIT_DEFAULT)
+	{
+		KRIL_DEBUG(DBG_INFO,"pack USSD Octets to Septets\n");
+		septet_len = KRIL_USSDOctet2Septet(num->Num, septet_string, num->len );
+		total_ussd_len = septet_len + 1; //1 byte for DCS
+	}
+	else
+	{
+        total_ussd_len = num->len + 1; //1 byte for DCS
+	}
     
 	//Fill length
 	if(total_ussd_len > 127)
@@ -2048,7 +2059,15 @@ UInt16 ParseUssdString(UInt8 *simple_tlv_ptr, SATKNum_t* num)
     total_byte += 1;    
 
     // Fill USSD String
-    memcpy(tlv_ptr, num->Num, total_ussd_len - 1);
+	if(septet_len > 0)
+	{
+        memcpy(tlv_ptr, septet_string, total_ussd_len - 1);
+		
+	}
+	else
+	{
+        memcpy(tlv_ptr, num->Num, total_ussd_len - 1);
+	}
 
 	tlv_ptr += total_ussd_len - 1;
     total_byte += total_ussd_len - 1;
@@ -4060,7 +4079,7 @@ void ProcessSATKSetupMenu(void *dataBuf)
     KRIL_DEBUG(DBG_ERROR,"satk_setup_menu_tlv_length = %d\n", satk_setup_menu_tlv_length);
     KRIL_DEBUG(DBG_ERROR,"satk_setup_menu_tlv_data_string = %x \n", satk_setup_menu_tlv_data_string);
 	
-    KRIL_SendNotify(BRCM_RIL_UNSOL_STK_PROACTIVE_COMMAND, tlv_data_string, (tlv_length * 2 + 1));
+    KRIL_SendNotify(RIL_UNSOL_STK_PROACTIVE_COMMAND, tlv_data_string, (tlv_length * 2 + 1));
 }
 
 
@@ -4087,7 +4106,7 @@ void ProcessSATKSelectItem(void *dataBuf)
         return;    
     }
     
-    KRIL_SendNotify(BRCM_RIL_UNSOL_STK_PROACTIVE_COMMAND, tlv_data_string, (tlv_length * 2 + 1));
+    KRIL_SendNotify(RIL_UNSOL_STK_PROACTIVE_COMMAND, tlv_data_string, (tlv_length * 2 + 1));
 }
 
 
@@ -4114,7 +4133,7 @@ void ProcessSATKGetInput(void *dataBuf)
         return;    
     }
     
-    KRIL_SendNotify(BRCM_RIL_UNSOL_STK_PROACTIVE_COMMAND, tlv_data_string, (tlv_length * 2 + 1));
+    KRIL_SendNotify(RIL_UNSOL_STK_PROACTIVE_COMMAND, tlv_data_string, (tlv_length * 2 + 1));
 }
 
 
@@ -4141,7 +4160,7 @@ void ProcessSATKGetInkey(void *dataBuf)
         return;    
     }
     
-    KRIL_SendNotify(BRCM_RIL_UNSOL_STK_PROACTIVE_COMMAND, tlv_data_string, (tlv_length * 2 + 1));    
+    KRIL_SendNotify(RIL_UNSOL_STK_PROACTIVE_COMMAND, tlv_data_string, (tlv_length * 2 + 1));    
 }
 
 
@@ -4168,7 +4187,7 @@ void ProcessSATKDisplayText(void *dataBuf)
         return;    
     }
     
-    KRIL_SendNotify(BRCM_RIL_UNSOL_STK_PROACTIVE_COMMAND, tlv_data_string, (tlv_length * 2 + 1));
+    KRIL_SendNotify(RIL_UNSOL_STK_PROACTIVE_COMMAND, tlv_data_string, (tlv_length * 2 + 1));
 }
 
 
@@ -4195,7 +4214,7 @@ void ProcessSATKSendMOSMS(void *dataBuf)
         return;    
     }
     
-    KRIL_SendNotify(BRCM_RIL_UNSOL_STK_PROACTIVE_COMMAND, tlv_data_string,(tlv_length* 2 + 1));    // gearn TR fail 
+    KRIL_SendNotify(RIL_UNSOL_STK_PROACTIVE_COMMAND, tlv_data_string,(tlv_length* 2 + 1));    // gearn TR fail 
 }
 
 
@@ -4222,7 +4241,7 @@ void ProcessSATKSendSs(void *dataBuf)
         return;    
     }
     
-    KRIL_SendNotify(BRCM_RIL_UNSOL_STK_PROACTIVE_COMMAND, tlv_data_string, (tlv_length * 2 + 1)); // gearn TR fail 
+    KRIL_SendNotify(RIL_UNSOL_STK_PROACTIVE_COMMAND, tlv_data_string, (tlv_length * 2 + 1)); // gearn TR fail 
 }
 
 
@@ -4249,7 +4268,7 @@ void ProcessSATKSendUssd(void *dataBuf)
         return;    
     }
     
-    KRIL_SendNotify(BRCM_RIL_UNSOL_STK_PROACTIVE_COMMAND, tlv_data_string, (tlv_length * 2 + 1)); // gearn TR fail 
+    KRIL_SendNotify(RIL_UNSOL_STK_PROACTIVE_COMMAND, tlv_data_string, (tlv_length * 2 + 1)); // gearn TR fail 
 }
 
 
@@ -4276,7 +4295,7 @@ void ProcessSATKPlayTone(void *dataBuf)
         return;    
     }
     
-    KRIL_SendNotify(BRCM_RIL_UNSOL_STK_PROACTIVE_COMMAND, tlv_data_string, (tlv_length * 2 + 1));
+    KRIL_SendNotify(RIL_UNSOL_STK_PROACTIVE_COMMAND, tlv_data_string, (tlv_length * 2 + 1));
 }
 
 
@@ -4303,7 +4322,7 @@ void ProcessSATKSendStkDtmf(void *dataBuf)
         return;    
     }
     
-    KRIL_SendNotify(BRCM_RIL_UNSOL_STK_EVENT_NOTIFY, tlv_data_string, (tlv_length * 2 + 1));
+    KRIL_SendNotify(RIL_UNSOL_STK_EVENT_NOTIFY, tlv_data_string, (tlv_length * 2 + 1));
 }
 
 
@@ -4334,10 +4353,10 @@ void ProcessSATKSetupCall(void *dataBuf)
     StkCall = TRUE;    // gearn setup call 
    KRIL_DEBUG(DBG_ERROR,"ProcessSATKSetupCall :%d\n", StkCall);
 	
-    //KRIL_SendNotify(BRCM_RIL_UNSOL_STK_CALL_SETUP, timeout, sizeof(int));
-    KRIL_SendNotify(BRCM_RIL_UNSOL_STK_PROACTIVE_COMMAND, tlv_data_string, (tlv_length * 2 + 1)); // gearn TR fail 
+    //KRIL_SendNotify(RIL_UNSOL_STK_CALL_SETUP, timeout, sizeof(int));
+    KRIL_SendNotify(RIL_UNSOL_STK_PROACTIVE_COMMAND, tlv_data_string, (tlv_length * 2 + 1)); // gearn TR fail 
     
-    KRIL_SendNotify(BRCM_RIL_UNSOL_STK_CALL_SETUP, timeout, sizeof(int));
+    KRIL_SendNotify(RIL_UNSOL_STK_CALL_SETUP, timeout, sizeof(int));
 }
 
 
@@ -4364,7 +4383,7 @@ void ProcessSATKIdleModeText(void *dataBuf)
         return;    
     }
     
-    KRIL_SendNotify(BRCM_RIL_UNSOL_STK_PROACTIVE_COMMAND, tlv_data_string, (tlv_length * 2 + 1));
+    KRIL_SendNotify(RIL_UNSOL_STK_PROACTIVE_COMMAND, tlv_data_string, (tlv_length * 2 + 1));
 }
 
 
@@ -4405,24 +4424,22 @@ void ProcessSATKRefresh(void *dataBuf)
         case SMRT_INIT_FULLFILE_CHANGED:
         case SMRT_INIT_FILE_CHANGED:
         case SMRT_INIT:
-            data[0] = BCM_SIM_INIT;
+            data[0] = SIM_INIT;
             data[1] = 0;
-            Msisdnck= FALSE;
             break;
         
         case SMRT_FILE_CHANGED:
-            data[0] = BCM_SIM_FILE_UPDATE;
+            data[0] = SIM_FILE_UPDATE;
             path_len = pRefresh->FileIdList.changed_file[0].path_len;
             data[1] = (int)pRefresh->FileIdList.changed_file[0].file_path[path_len-1];
-            KRIL_DEBUG(DBG_INFO,"SMRT_FILE_CHANGED: data[1]:0x%X\n",data[1]); 
+            KRIL_DEBUG(DBG_INFO,"SMRT_FILE_CHANGED: data[1]:0x%X\n",data[1]);
             break;
         case SMRT_RESET:
-             data[0] = BCM_SIM_RESET;
+             data[0] = SIM_RESET;
              data[1] = 0;
              gIsStkRefreshReset = TRUE;
-             Msisdnck= FALSE;
              KRIL_DEBUG(DBG_ERROR,"ParseSATKRefresh() SMRT_RESET!!\n");
-             KRIL_SendNotify(BRCM_RIL_UNSOL_SIM_REFRESH, data, sizeof(int)*2);
+             KRIL_SendNotify(RIL_UNSOL_SIM_REFRESH, data, sizeof(int)*2);
              //return;
              break;
 
@@ -4441,10 +4458,10 @@ void ProcessSATKRefresh(void *dataBuf)
     {
 	      CAPI2_InitClientInfo(&clientInfo, GetNewTID(), GetClientID());
         CAPI2_SatkApi_CmdResp(&clientInfo, SATK_EVENT_REFRESH, SATK_Result_CmdSuccess, 0, NULL, 0);        
-        KRIL_SendNotify(BRCM_RIL_UNSOL_SIM_REFRESH, data, sizeof(int)*2); // gearn refresh AP
+        KRIL_SendNotify(RIL_UNSOL_SIM_REFRESH, data, sizeof(int)*2); // gearn refresh AP
     }
     
-    KRIL_SendNotify(BRCM_RIL_UNSOL_STK_PROACTIVE_COMMAND, tlv_data_string, (tlv_length * 2 + 1));
+    KRIL_SendNotify(RIL_UNSOL_STK_PROACTIVE_COMMAND, tlv_data_string, (tlv_length * 2 + 1));
     }
 
 
@@ -4471,7 +4488,7 @@ void ProcessSATKLaunchBrowser(void *dataBuf)
         return;    
     }
     
-    KRIL_SendNotify(BRCM_RIL_UNSOL_STK_PROACTIVE_COMMAND, tlv_data_string, (tlv_length * 2 + 1));
+    KRIL_SendNotify(RIL_UNSOL_STK_PROACTIVE_COMMAND, tlv_data_string, (tlv_length * 2 + 1));
 }
 
 //******************************************************************************
@@ -4496,7 +4513,7 @@ void ProcessSATKSetupEventList(void *dataBuf)
         return;    
     }
     
-    KRIL_SendNotify(BRCM_RIL_UNSOL_STK_PROACTIVE_COMMAND, tlv_data_string, (tlv_length * 2 + 1));    
+    KRIL_SendNotify(RIL_UNSOL_STK_PROACTIVE_COMMAND, tlv_data_string, (tlv_length * 2 + 1));    
 }
 //******************************************************************************
 //
@@ -4521,7 +4538,7 @@ void ProcessSATKSendLanguageNotificationInd(void *dataBuf)
         return;    
     }
     
-    KRIL_SendNotify(BRCM_RIL_UNSOL_STK_PROACTIVE_COMMAND, tlv_data_string, (tlv_length * 2 + 1));
+    KRIL_SendNotify(RIL_UNSOL_STK_PROACTIVE_COMMAND, tlv_data_string, (tlv_length * 2 + 1));
 }
 
 //******************************************************************************
@@ -4599,7 +4616,7 @@ Boolean ProcessUSSDDataInd(void* data)
     {
         memcpy(rdata.USSDString, rsp->ussd_data.string, rdata.Length);
     }
-    KRIL_SendNotify(BRCM_RIL_UNSOL_ON_USSD, &rdata, sizeof(KrilReceiveUSSDInfo_t));
+    KRIL_SendNotify(RIL_UNSOL_ON_USSD, &rdata, sizeof(KrilReceiveUSSDInfo_t));
 
     return TRUE;
 }
@@ -4691,7 +4708,7 @@ Boolean ProcessTimeZoneInd(void* data)
   
     KRIL_DEBUG(DBG_INFO, "MSG_DATE_TIMEZONE_IND::timeZone:%d dstAdjust:%d Sec:%d Min:%d Hour:%d Week:%d Day:%d Month:%d Year:%d mcc:%x mnc:%x\n", 
     				rdate.timeZone, rdate.dstAdjust, rdate.Sec, rdate.Min, rdate.Hour, rdate.Week, rdate.Day, rdate.Month, rdate.Year, rdate.mcc,rdate.mnc);
-    KRIL_SendNotify(BRCM_RIL_UNSOL_NITZ_TIME_RECEIVED, &rdate, sizeof(KrilTimeZoneDate_t));
+    KRIL_SendNotify(RIL_UNSOL_NITZ_TIME_RECEIVED, &rdate, sizeof(KrilTimeZoneDate_t));
     return TRUE;
 }
 
@@ -4712,18 +4729,18 @@ void ProcessRestrictedState(void)
     if ((REG_STATE_NORMAL_SERVICE == sCgreg_state || REG_STATE_ROAMING_SERVICE == sCgreg_state) &&
         (REG_STATE_NORMAL_SERVICE == sCreg_state || REG_STATE_ROAMING_SERVICE == sCreg_state)) //CS and PS allow
     {
-        if (BCM_RIL_RESTRICTED_STATE_NONE != KRIL_GetRestrictedState())
+        if (RIL_RESTRICTED_STATE_NONE != KRIL_GetRestrictedState())
         {
-            KRIL_SetRestrictedState(BCM_RIL_RESTRICTED_STATE_NONE);
+            KRIL_SetRestrictedState(RIL_RESTRICTED_STATE_NONE);
             update = TRUE;
         }
     }
     else if ((REG_STATE_NORMAL_SERVICE != sCgreg_state || REG_STATE_ROAMING_SERVICE != sCgreg_state) &&
         (REG_STATE_NORMAL_SERVICE == sCreg_state || REG_STATE_ROAMING_SERVICE == sCreg_state))  //CS allow and PS restricted
     {
-        if (BCM_RIL_RESTRICTED_STATE_PS_ALL != KRIL_GetRestrictedState())
+        if (RIL_RESTRICTED_STATE_PS_ALL != KRIL_GetRestrictedState())
         {
-            KRIL_SetRestrictedState(BCM_RIL_RESTRICTED_STATE_PS_ALL);
+            KRIL_SetRestrictedState(RIL_RESTRICTED_STATE_PS_ALL);
             update = TRUE;
         }
     }
@@ -4732,17 +4749,17 @@ void ProcessRestrictedState(void)
     {
         if(REG_STATE_LIMITED_SERVICE == sCreg_state || REG_STATE_NO_SERVICE == sCreg_state)
         {
-            if (BCM_RIL_RESTRICTED_STATE_CS_NORMAL != KRIL_GetRestrictedState())
+            if (RIL_RESTRICTED_STATE_CS_NORMAL != KRIL_GetRestrictedState())
             {
-                KRIL_SetRestrictedState(BCM_RIL_RESTRICTED_STATE_CS_NORMAL);
+                KRIL_SetRestrictedState(RIL_RESTRICTED_STATE_CS_NORMAL);
                 update = TRUE;
             }
         }
         else
         {
-            if (BCM_RIL_RESTRICTED_STATE_CS_ALL != KRIL_GetRestrictedState())
+            if (RIL_RESTRICTED_STATE_CS_ALL != KRIL_GetRestrictedState())
             {
-                KRIL_SetRestrictedState(BCM_RIL_RESTRICTED_STATE_CS_ALL);
+                KRIL_SetRestrictedState(RIL_RESTRICTED_STATE_CS_ALL);
                 update = TRUE;
             }
         }
@@ -4751,17 +4768,17 @@ void ProcessRestrictedState(void)
     {
         if (sCreg_state == REG_STATE_LIMITED_SERVICE)
         {
-            if (BCM_RIL_RESTRICTED_STATE_CS_NORMAL != KRIL_GetRestrictedState()) //CS emergency and PS restricted
+            if (RIL_RESTRICTED_STATE_CS_NORMAL != KRIL_GetRestrictedState()) //CS emergency and PS restricted
             {
-                KRIL_SetRestrictedState(BCM_RIL_RESTRICTED_STATE_CS_NORMAL | BCM_RIL_RESTRICTED_STATE_PS_ALL);
+                KRIL_SetRestrictedState(RIL_RESTRICTED_STATE_CS_NORMAL | RIL_RESTRICTED_STATE_PS_ALL);
                 update = TRUE;
             }
         }
         else if (REG_STATE_SEARCHING == sCreg_state && REG_STATE_SEARCHING == sCgreg_state) // CS and PS restricted
         {
-            if ((BCM_RIL_RESTRICTED_STATE_CS_ALL | BCM_RIL_RESTRICTED_STATE_PS_ALL) != KRIL_GetRestrictedState())
+            if ((RIL_RESTRICTED_STATE_CS_ALL | RIL_RESTRICTED_STATE_PS_ALL) != KRIL_GetRestrictedState())
             {
-                KRIL_SetRestrictedState(BCM_RIL_RESTRICTED_STATE_CS_ALL | BCM_RIL_RESTRICTED_STATE_PS_ALL);
+                KRIL_SetRestrictedState(RIL_RESTRICTED_STATE_CS_ALL | RIL_RESTRICTED_STATE_PS_ALL);
                 update = TRUE;
             }
         }
@@ -4770,7 +4787,7 @@ void ProcessRestrictedState(void)
     if (TRUE == update)
     {
         int state = KRIL_GetRestrictedState();
-        KRIL_SendNotify(BRCM_RIL_UNSOL_RESTRICTED_STATE_CHANGED, &state, sizeof(int));
+        KRIL_SendNotify(RIL_UNSOL_RESTRICTED_STATE_CHANGED, &state, sizeof(int));
         update = FALSE;
     }
 }
@@ -4805,8 +4822,8 @@ void ProcessGSMStatus(void* data)
             else
             {
                 KRIL_SetHandling2GOnlyRequest( FALSE );
-                KRIL_DEBUG(DBG_INFO, "Sending BRCM_RIL_UNSOL_RESPONSE_NETWORK_STATE_CHANGED\n" );
-            KRIL_SendNotify(BRCM_RIL_UNSOL_RESPONSE_NETWORK_STATE_CHANGED, NULL, 0);
+                KRIL_DEBUG(DBG_INFO, "Sending RIL_UNSOL_RESPONSE_NETWORK_STATE_CHANGED\n" );
+            KRIL_SendNotify(RIL_UNSOL_RESPONSE_NETWORK_STATE_CHANGED, NULL, 0);
         }
         }
         else
@@ -4818,7 +4835,7 @@ void ProcessGSMStatus(void* data)
                 gRegInfo.lac !=  pMSRegInfo->lac ||
                 gRegInfo.cell_id != pMSRegInfo->cell_id)) //+Creg=2 ; <state>, <lac>, <ci>, <AcT>
             {
-                KRIL_SendNotify(BRCM_RIL_UNSOL_RESPONSE_NETWORK_STATE_CHANGED, NULL, 0);
+                KRIL_SendNotify(RIL_UNSOL_RESPONSE_NETWORK_STATE_CHANGED, NULL, 0);
             }
         }
         memcpy(&gRegInfo, pMSRegInfo, sizeof(MSRegInfo_t));
@@ -4858,9 +4875,9 @@ void ProcessGPRSStatus(void* data)
             else
             {
                 KRIL_DEBUG(DBG_INFO, "Sending RIL_UNSOL_RESPONSE_NETWORK_STATE_CHANGED\n" );
-                KRIL_SendNotify(BRCM_RIL_UNSOL_RESPONSE_NETWORK_STATE_CHANGED, NULL, 0);
+                KRIL_SendNotify(RIL_UNSOL_RESPONSE_NETWORK_STATE_CHANGED, NULL, 0);
             }
-			KRIL_DEBUG(DBG_INFO, "ProcessGPRSStatus::BRCM_RIL_UNSOL_RESPONSE_NETWORK_STATE_CHANGED pMSRegInfo->regState %d\n", pMSRegInfo->regState);
+			KRIL_DEBUG(DBG_INFO, "ProcessGPRSStatus::RIL_UNSOL_RESPONSE_NETWORK_STATE_CHANGED pMSRegInfo->regState %d\n", pMSRegInfo->regState);
         }
 #if 0 // remove the function to avoid the GPRS connection does not establish.
         ProcessRestrictedState();
@@ -4887,7 +4904,7 @@ void ProcessUE3GStatus(void* data)
         pUE3Ginfo->in_uas_conn_info.ue_out_of_service != gUE3GInfo.in_uas_conn_info.ue_out_of_service)
     {
         KRIL_DEBUG(DBG_INFO, "Sending RIL_UNSOL_RESPONSE_NETWORK_STATE_CHANGED\n" );
-        KRIL_SendNotify(BRCM_RIL_UNSOL_RESPONSE_NETWORK_STATE_CHANGED, NULL, 0);
+        KRIL_SendNotify(RIL_UNSOL_RESPONSE_NETWORK_STATE_CHANGED, NULL, 0);
     }
     memcpy(&gUE3GInfo, pUE3Ginfo, sizeof(MSUe3gStatusInd_t));
 
@@ -4957,7 +4974,7 @@ void ProcessRSSIInfo(void* data)
         signal_strnegth.RxLev = pSignalInfo->rssi;
         signal_strnegth.RxQual	= pSignalInfo->qual;
         KRIL_DEBUG(DBG_INFO, "MSG_RSSI_IND::RAT:%d RxLev:%d RxQual:%d\n", signal_strnegth.RAT, signal_strnegth.RxLev, signal_strnegth.RxQual);
-        KRIL_SendNotify(BRCM_RIL_UNSOL_SIGNAL_STRENGTH, &signal_strnegth, sizeof(KrilSignalStrength_t));
+        KRIL_SendNotify(RIL_UNSOL_SIGNAL_STRENGTH, &signal_strnegth, sizeof(KrilSignalStrength_t));
     }
 }
 
@@ -4981,7 +4998,7 @@ void  ProcessSMSIndexInSIM(void* data)
         KrilMsgIndexInfo_t msg;
         msg.index = pSmsIndex->rec_no;
         msg.index++;
-        KRIL_SendNotify(BRCM_RIL_UNSOL_RESPONSE_NEW_SMS_ON_SIM, &msg, sizeof(KrilMsgIndexInfo_t));
+        KRIL_SendNotify(RIL_UNSOL_RESPONSE_NEW_SMS_ON_SIM, &msg, sizeof(KrilMsgIndexInfo_t));
     }
 }
 
@@ -5009,7 +5026,7 @@ void  ProcessNewSMSMessage(void * data)
         KRIL_DEBUG(DBG_INFO, "moreMsgFlag:%d\n", pmsg->msg.msgRxData.moreMsgFlag);
         tdata->MoreSMSToReceive = !(pmsg->msg.msgRxData.moreMsgFlag);
         SetIsRevClass2SMS(TRUE);
-        if(!KRIL_DevSpecific_Cmd(BCM_KRIL_CLIENT, BRCM_RIL_REQUEST_WRITE_SMS_TO_SIM, tdata, sizeof(KrilWriteMsgInfo_t)))
+        if(!KRIL_DevSpecific_Cmd(BCM_KRIL_CLIENT, RIL_REQUEST_WRITE_SMS_TO_SIM, tdata, sizeof(KrilWriteMsgInfo_t)))
         {
             KRIL_DEBUG(DBG_ERROR,"Command KRIL_REQUEST_INIT_CMD failed\n");
         }
@@ -5027,7 +5044,7 @@ void  ProcessNewSMSMessage(void * data)
         KrilMsgPDUInfo_t msg;
         msg.pduSize = pmsg->pduSize;
         memcpy(msg.PDU, pmsg->PDU, pmsg->pduSize);
-        KRIL_SendNotify(BRCM_RIL_UNSOL_RESPONSE_NEW_SMS, &msg, sizeof(KrilMsgPDUInfo_t));
+        KRIL_SendNotify(RIL_UNSOL_RESPONSE_NEW_SMS, &msg, sizeof(KrilMsgPDUInfo_t));
     }
 }
 
@@ -5051,7 +5068,7 @@ void  ProcessNewSMSReport(void * data)
     msg->PDU[0] = 0x00;
     memcpy(&msg->PDU[1], pmsg->PDU, pmsg->pduSize);
     KRIL_DEBUG(DBG_INFO, "pduSize:%d pduSize:%d Number:%s\n", msg->pduSize, pmsg->pduSize, pmsg->daoaAddress.Number);
-    KRIL_SendNotify(BRCM_RIL_UNSOL_RESPONSE_NEW_SMS_STATUS_REPORT, msg, sizeof(KrilMsgPDUInfo_t));
+    KRIL_SendNotify(RIL_UNSOL_RESPONSE_NEW_SMS_STATUS_REPORT, msg, sizeof(KrilMsgPDUInfo_t));
     kfree(msg);
 }
 
@@ -5230,7 +5247,7 @@ void  ProcessSuppSvcNotification(void * data)
     {
         ndata->index = 0;
     }
-    KRIL_SendNotify(BRCM_RIL_UNSOL_SUPP_SVC_NOTIFICATION, ndata, sizeof(KrilSuppSvcNotification_t));
+    KRIL_SendNotify(RIL_UNSOL_SUPP_SVC_NOTIFICATION, ndata, sizeof(RIL_SuppSvcNotification));
     kfree(ndata);
 }
 
@@ -5429,7 +5446,7 @@ void  ProcessSSNotification(Kril_CAPI2Info_t * data)
 
                 case SS_CODE_ALL_CALL_RESTRICTION:
                     ndata->code = 5;
-                    KRIL_SendNotify(BRCM_RIL_UNSOL_SUPP_SVC_NOTIFICATION, ndata, sizeof(KrilSuppSvcNotification_t));
+                    KRIL_SendNotify(RIL_UNSOL_SUPP_SVC_NOTIFICATION, ndata, sizeof(RIL_SuppSvcNotification));
                     ndata->code = 6;
                     break;
 
@@ -5535,7 +5552,7 @@ void  ProcessSSNotification(Kril_CAPI2Info_t * data)
     KRIL_DEBUG(DBG_ERROR, "notificationType:%d code:%d index:%d \n", ndata->notificationType, ndata->code, ndata->index);
     if (ndata->code != 0xFF)
     {
-        KRIL_SendNotify(BRCM_RIL_UNSOL_SUPP_SVC_NOTIFICATION, ndata, sizeof(KrilSuppSvcNotification_t));
+        KRIL_SendNotify(RIL_UNSOL_SUPP_SVC_NOTIFICATION, ndata, sizeof(RIL_SuppSvcNotification));
     }
     kfree(ndata);
 }
@@ -5560,7 +5577,7 @@ void ProcessNotification(Kril_CAPI2Info_t *notify)
             CallReceiveMsg_t * pIncomingCall = (CallReceiveMsg_t *) notify->dataBuf;
             KRIL_SetIncomingCallIndex(pIncomingCall->callIndex);
             KRIL_SetCallNumPresent(pIncomingCall->callIndex, pIncomingCall->callingInfo.present, pIncomingCall->callingInfo.c_num);
-            KRIL_SendNotify(BRCM_RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED, NULL, 0);
+            KRIL_SendNotify(RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED, NULL, 0);
             break;
             }
 
@@ -5569,7 +5586,7 @@ void ProcessNotification(Kril_CAPI2Info_t *notify)
             VoiceCallWaitingMsg_t * pWaitingCall = (VoiceCallWaitingMsg_t *) notify->dataBuf;
             KRIL_SetWaitingCallIndex(pWaitingCall->callIndex);
             KRIL_SetCallNumPresent(pWaitingCall->callIndex, pWaitingCall->callingInfo.present, pWaitingCall->callingInfo.c_num);
-            KRIL_SendNotify(BRCM_RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED, NULL, 0);
+            KRIL_SendNotify(RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED, NULL, 0);
             break;
         }
 
@@ -5630,7 +5647,7 @@ void ProcessNotification(Kril_CAPI2Info_t *notify)
                     memset(&pdp_resp[i], 0, sizeof(KrilDataCallResponse_t));
                     pdp_resp[i].cid = pind->cid;
                     KRIL_DEBUG(DBG_INFO, "MSG_PDP_DEACTIVATION_IND[%d]=%d \n", i, pdp_resp[i].cid);
-                    KRIL_SendNotify(BRCM_RIL_UNSOL_DATA_CALL_LIST_CHANGED, &pdp_resp[i], sizeof(KrilDataCallResponse_t));
+                    KRIL_SendNotify(RIL_UNSOL_DATA_CALL_LIST_CHANGED, &pdp_resp[i], sizeof(KrilDataCallResponse_t));
                     pdp_resp[i].cid = 0; 
                     break;
                 }
@@ -5645,7 +5662,7 @@ void ProcessNotification(Kril_CAPI2Info_t *notify)
         case MSG_SIM_DETECTION_IND:
         {
             SIM_DETECTION_t *pind = (SIM_DETECTION_t *) notify->dataBuf;
-         //   BRIL_RadioState radiostate;    // gearn sim card type
+         //   RIL_RadioState radiostate;    // gearn sim card type
             RIL_SIM_Chaged SimStatusChage; 
             
             KRIL_DEBUG(DBG_ERROR, "MSG_SIM_DETECTION_IND::sim_appl_type:%d ruim_supported:%d\n", pind->sim_appl_type, pind->ruim_supported);
@@ -5659,18 +5676,18 @@ void ProcessNotification(Kril_CAPI2Info_t *notify)
                 Kril_SIMEmergency data;
                 data.simAppType = pind->sim_appl_type;
                 KRIL_SendNotify(BRIL_UNSOL_EMERGENCY_NUMBER, &data, sizeof(Kril_SIMEmergency));
-                SimStatusChage.radioState= BCM_RADIO_STATE_SIM_LOCKED_OR_ABSENT;
+                SimStatusChage.radioState= RADIO_STATE_SIM_LOCKED_OR_ABSENT;
             }
             else
             {
-                SimStatusChage.radioState = BCM_RADIO_STATE_SIM_READY;
+                SimStatusChage.radioState = RADIO_STATE_SIM_READY;
             }
 
             // Do not send the radio state change notification to Android framework in flight mode to avoid to confusing its state machine.
   //          if (!gIsFlightModeOnBoot)   // gearn flihgt mode simcard type
    //         {
 		  SimStatusChage.IsFlightModeOnBoot  = gIsFlightModeOnBoot;   // gearn flihgt mode simcard type
-                KRIL_SendNotify(BRCM_RIL_UNSOL_RESPONSE_SIM_STATUS_CHANGED, &SimStatusChage, sizeof(RIL_SIM_Chaged));   // gearn sim card type
+                KRIL_SendNotify(RIL_UNSOL_RESPONSE_SIM_STATUS_CHANGED, &SimStatusChage, sizeof(RIL_SIM_Chaged));   // gearn sim card type
    //         }
             break;
         }
@@ -5693,7 +5710,7 @@ void ProcessNotification(Kril_CAPI2Info_t *notify)
             CAPI2_InitClientInfo(&clientInfo, GetNewTID(), GetClientID());
             CAPI2_SimApi_PowerOnOffCard (&clientInfo, FALSE, SIM_POWER_ON_INVALID_MODE);
             
-            KRIL_SendNotify(BRCM_RIL_UNSOL_OEM_HOOK_RAW, msg, sizeof(msg));
+            KRIL_SendNotify(RIL_UNSOL_OEM_HOOK_RAW, msg, sizeof(msg));
             break;
         }
 
@@ -5730,35 +5747,12 @@ void ProcessNotification(Kril_CAPI2Info_t *notify)
             break;
 
         case MSG_PBK_READY_IND:
-        {       char msg[5 + 33]  ;	///< NULL terminated IMSI string in ASCII format
-                PBK_ENTRY_DATA_RSP_t *pbk_entry = (PBK_ENTRY_DATA_RSP_t*) notify->dataBuf;
-                KRIL_DEBUG(DBG_ERROR,"MSG_PBK_READY_IND");
-                if ( pbk_entry->pbk_id == PB_MSISDN){
-					/* handle the MSISDN message */
-        		//	KRIL_DEBUG(DBG_ERROR,"BRIL_HOOK_UNSOL_SIM_MSISDN_DATA: %s \n", pbk_entry->pbk_rec.number);
-				if (Msisdnck == FALSE){
-        			memset(msg,0,sizeof(msg));
-		
-        			msg[0]=(UInt8)'B';
-        			msg[1]=(UInt8)'R';
-        			msg[2]=(UInt8)'C';
-        			msg[3]=(UInt8)'M';
-        			msg[4]=(UInt8)BRIL_HOOK_UNSOL_SIM_MSISDN_DATA;
-        			memcpy(&(msg[5]),pbk_entry->pbk_rec.number,33);
-        			KRIL_SendNotify(BRCM_RIL_UNSOL_OEM_HOOK_RAW, msg, sizeof(msg));
-        			Msisdnck = TRUE;
-        			}
-        		}else
-        		{
             if(!KRIL_DevSpecific_Cmd(BCM_KRIL_CLIENT, KRIL_REQUEST_QUERY_SIM_EMERGENCY_NUMBER, NULL, 0))
             {
                 KRIL_DEBUG(DBG_ERROR,"Command KRIL_REQUEST_QUERY_SIM_EMERGENCY_NUMBER failed\n");
             }
-        		}
-
-
             break;
-        }
+
         case MSG_HOMEZONE_STATUS_IND:
             KRIL_DEBUG(DBG_INFO, "MSG_HOMEZONE_STATUS_IND::not process\n");
             break;
@@ -5779,11 +5773,10 @@ void ProcessNotification(Kril_CAPI2Info_t *notify)
             VoiceCallReleaseMsg_t *ndata = (VoiceCallReleaseMsg_t*) notify->dataBuf;
             KRIL_DEBUG(DBG_INFO, "MSG_VOICECALL_RELEASE_IND::cause:%lu\n", (UInt32)ndata->exitCause);
             KRIL_SetLastCallFailCause( KRIL_MNCauseToRilError(ndata->exitCause) );
-			KRIL_HandleVoiceCallReleased( ndata->callIndex );
             if (ndata->exitCause != MNCAUSE_RADIO_LINK_FAILURE_APPEARED ||  // Add the call status notification here, replace the call status change in MSG_CALL_STATUS_IND for CC_CALL_DISCONNECT
                     !(KRIL_GetCallType(ndata->callIndex) ==MOVOICE_CALL && // send RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED only not MO call and not dialing or alerting state
-                    (KRIL_GetCallState(ndata->callIndex) == BCM_CALL_DIALING || KRIL_GetCallState(ndata->callIndex) == BCM_CALL_ALERTING)))
-                KRIL_SendNotify(BRCM_RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED, NULL, 0);
+                    (KRIL_GetCallState(ndata->callIndex) == RIL_CALL_DIALING || KRIL_GetCallState(ndata->callIndex) == RIL_CALL_ALERTING)))
+                KRIL_SendNotify(RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED, NULL, 0);
             
             break;
         }
@@ -5792,7 +5785,7 @@ void ProcessNotification(Kril_CAPI2Info_t *notify)
         {
             VoiceCallPreConnectMsg_t *ndata = (VoiceCallPreConnectMsg_t*) notify->dataBuf;
             KRIL_DEBUG(DBG_INFO, "MSG_VOICECALL_PRECONNECT_IND::callIndex:%d\n",ndata->callIndex);
-            KRIL_SendNotify(BRCM_RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED, NULL, 0);
+            KRIL_SendNotify(RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED, NULL, 0);
             break;
         }
 
@@ -5800,7 +5793,7 @@ void ProcessNotification(Kril_CAPI2Info_t *notify)
         {
             VoiceCallConnectMsg_t *ndata = (VoiceCallConnectMsg_t*) notify->dataBuf;
             KRIL_DEBUG(DBG_INFO, "MSG_VOICECALL_CONNECTED_IND::callIndex:%d\n",ndata->callIndex);
-            KRIL_SendNotify(BRCM_RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED, NULL, 0);
+            KRIL_SendNotify(RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED, NULL, 0);
             break;
         }
 
@@ -5826,7 +5819,7 @@ void ProcessNotification(Kril_CAPI2Info_t *notify)
 			memset(&KrilStkCallCtrlResult.modadd,0x00,sizeof(KrilStkCallCtrlResult.modadd));
 			KRIL_SendNotify(RIL_UNSOL_STK_CALL_CONTROL_RESULT, &KrilStkCallCtrlResult,sizeof(RIL_Stk_CallCtrl_Result /*KrilStkCallCtrlResult_t */));
           
-			 KRIL_DEBUG(DBG_ERROR, "MSG_CALL_STATUS_IND  BRCM_RIL_UNSOL_STK_CALL_CONTROL_RESULT :call_type:%d , control_result:%d \n", KrilStkCallCtrlResult.call_type, KrilStkCallCtrlResult.control_result);
+			 KRIL_DEBUG(DBG_ERROR, "MSG_CALL_STATUS_IND  RIL_UNSOL_STK_CALL_CONTROL_RESULT :call_type:%d , control_result:%d \n", KrilStkCallCtrlResult.call_type, KrilStkCallCtrlResult.control_result);
 
 	        //    ProcessSATKCCDisplayInd(notify->msgType,notify->dataBuf);
 		}
@@ -5835,7 +5828,7 @@ void ProcessNotification(Kril_CAPI2Info_t *notify)
             if (MOVIDEO_CALL == pCallStatusMsg->callType && CC_CALL_ALERTING == pCallStatusMsg->callstatus)
             {
                 int callIndex = pCallStatusMsg->callIndex;
-                KRIL_SendNotify(BRCM_RIL_UNSOL_RESPONSE_VT_CALL_EVENT_PROGRESS_INFO_IND, &callIndex, sizeof(int));
+                KRIL_SendNotify(RIL_UNSOL_RESPONSE_VT_CALL_EVENT_PROGRESS_INFO_IND, &callIndex, sizeof(int));
             }
            // else //mask this if integrate to phone app
 #endif //VIDEO_TELEPHONY_ENABLE            
@@ -5847,7 +5840,7 @@ void ProcessNotification(Kril_CAPI2Info_t *notify)
                      CC_CALL_CALLING == pCallStatusMsg->callstatus     
               )
             {
-                KRIL_SendNotify(BRCM_RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED, NULL, 0);
+                KRIL_SendNotify(RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED, NULL, 0);
             }
             break;
         }
@@ -5873,7 +5866,7 @@ void ProcessNotification(Kril_CAPI2Info_t *notify)
             int callIndex = pCallReleaseMsg->callIndex;
             KRIL_DEBUG(DBG_INFO, "MSG_DATACALL_RELEASE_IND::callIndex:%d exitCause: 0x%02X\n", pCallReleaseMsg->callIndex, pCallReleaseMsg->exitCause);
             
-            KRIL_SendNotify(BRCM_RIL_UNSOL_RESPONSE_VT_CALL_EVENT_END, &callIndex, sizeof(int));
+            KRIL_SendNotify(RIL_UNSOL_RESPONSE_VT_CALL_EVENT_END, &callIndex, sizeof(int));
             break;
         }
 #endif //VIDEO_TELEPHONY_ENABLE
@@ -6049,7 +6042,7 @@ void ProcessNotification(Kril_CAPI2Info_t *notify)
         case MSG_SATK_EVENT_STK_SESSION_END:
         {    
             KRIL_DEBUG(DBG_INFO,"MSG_SATK_EVENT_STK_SESSION_END\n");
-            KRIL_SendNotify(BRCM_RIL_UNSOL_STK_SESSION_END, NULL, 0);
+            KRIL_SendNotify(RIL_UNSOL_STK_SESSION_END, NULL, 0);
             break;
         }
 
@@ -6128,7 +6121,7 @@ void ProcessNotification(Kril_CAPI2Info_t *notify)
             memcpy(&data[6], pind->Msg, pind->NoOctets);
             KRIL_DEBUG(DBG_INFO,"Ser 0x%x, MsgId 0x%x, Dcs %d, NoP %d, NbP %d\n", pind->Serial, pind->MsgId, pind->Dcs, pind->NoPage, pind->NbPages);
 
-            KRIL_SendNotify(BRCM_RIL_UNSOL_RESPONSE_NEW_BROADCAST_SMS, data, 88);
+            KRIL_SendNotify(RIL_UNSOL_RESPONSE_NEW_BROADCAST_SMS, data, 88);
 #endif
 			break;
             }
@@ -6152,7 +6145,7 @@ void ProcessNotification(Kril_CAPI2Info_t *notify)
         case MSG_NETWORK_NAME_IND:
         {
             KRIL_DEBUG(DBG_INFO,"rxd MSG_NETWORK_NAME_IND, sending RIL_UNSOL_RESPONSE_NETWORK_STATE_CHANGED\n");
-            KRIL_SendNotify(BRCM_RIL_UNSOL_RESPONSE_NETWORK_STATE_CHANGED, NULL, 0);
+            KRIL_SendNotify(RIL_UNSOL_RESPONSE_NETWORK_STATE_CHANGED, NULL, 0);
             break;
         }
         

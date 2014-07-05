@@ -1800,7 +1800,7 @@ static void KRIL_SRIL_requestOemSvcTest(void *ril_cmd,  Kril_CAPI2Info_t *capi2_
 					
 					else
 					{
-						pdata->result = BCM_E_OP_NOT_ALLOWED_BEFORE_REG_TO_NW;
+						pdata->result = RIL_E_OP_NOT_ALLOWED_BEFORE_REG_TO_NW;
 					}
 
 					// get measurement data
@@ -1823,7 +1823,7 @@ static void KRIL_SRIL_requestOemSvcTest(void *ril_cmd,  Kril_CAPI2Info_t *capi2_
 
 		case BCM_RESPCAPI2Cmd:
 		{
-			if (BCM_E_OP_NOT_ALLOWED_BEFORE_REG_TO_NW == pdata->result)
+			if (RIL_E_OP_NOT_ALLOWED_BEFORE_REG_TO_NW == pdata->result)
 			{
 				KRIL_DEBUG(DBG_ERROR,"DebugScreen_ERROR \n");
 				pdata->handler_state = BCM_ErrorCAPI2Cmd;

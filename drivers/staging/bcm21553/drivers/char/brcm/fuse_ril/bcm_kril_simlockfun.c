@@ -695,7 +695,7 @@ static Boolean  SIMLockCheckNetworkLock(UInt8* imsi)
                 // According to the Annex A of GSM 03.22, MNC contains 2 or 3
                 // digits depending on the PLMN implementation (For PCS1900, 
                 // MNC contains three digits). 
-                // KRIL_DEBUG(DBG_INFO,"imsi:%s network_code->mcc:%s mnc:%s\n", imsi, network_code->mcc, network_code->mnc);
+                KRIL_DEBUG(DBG_INFO,"imsi:%s network_code->mcc:%s mnc:%s\n", imsi, network_code->mcc, network_code->mnc);
                 if ( (network_code->mcc[0] == imsi[0]) && (network_code->mcc[1] == imsi[1]) && 
                    (network_code->mcc[2] == imsi[2]) && (network_code->mnc[0] == imsi[3]) &&
                    (network_code->mnc[1] == imsi[4]) && 
@@ -1252,8 +1252,8 @@ static Boolean SIMLockCheckPHSIMLock(UInt8* imsi)
         else if (simlock_nvdata.phone_lock_setting == PH_SIM_LOCK_ON)
         {
             /* Phone lock on, check if IMSI is correct */
-            // KRIL_DEBUG(DBG_INFO,"simlock_nvdata.phone_lock_imsi:%s imsi:%s\n", 
-            //    (char*) &simlock_nvdata.phone_lock_imsi, (char*)imsi);
+            KRIL_DEBUG(DBG_INFO,"simlock_nvdata.phone_lock_imsi:%s imsi:%s\n", 
+                (char*) &simlock_nvdata.phone_lock_imsi, (char*)imsi);
             result = ((imsi != NULL) && (strcmp((char *) imsi, (char *) &simlock_nvdata.phone_lock_imsi) == 0));
         }
         else

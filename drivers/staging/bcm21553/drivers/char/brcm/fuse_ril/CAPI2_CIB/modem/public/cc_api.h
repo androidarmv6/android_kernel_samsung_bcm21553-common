@@ -800,15 +800,6 @@ Boolean CcApi_IsMultiPartyCall(ClientInfo_t*	inClientInfoPtr,
 							   UInt8			inCallIndex);
 
 
-//******************************************************************************
-// Function Name:	CcApi_IsActiveCall
-//
-// Description:		Function to Determine if a call with the call index is active call.
-//******************************************************************************
-Boolean CcApi_IsActiveCall(ClientInfo_t*	inClientInfoPtr,
-							   UInt8			inCallIndex);
-
-
 //**************************************************************************************
 /**
 	Function to Determine if there is the voice call.

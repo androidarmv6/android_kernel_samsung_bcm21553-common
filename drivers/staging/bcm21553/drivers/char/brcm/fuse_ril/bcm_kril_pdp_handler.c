@@ -30,59 +30,59 @@ KrilDataCallResponse_t pdp_resp[BCM_NET_MAX_RIL_PDP_CNTXS] = {0};
 
 static int ParsePdpFailCause(Result_t value)
 {
-    BRIL_LastDataCallActivateFailCause cause;
+    RIL_LastDataCallActivateFailCause cause;
     switch (value)
     {
         case PDP_OPERATOR_DETERMINED_BARRING:
-            cause = BCM_PDP_FAIL_OPERATOR_BARRED;
+            cause = PDP_FAIL_OPERATOR_BARRED;
             break;
 
         case PDP_INSUFFICIENT_RESOURCES:
-            cause = BCM_PDP_FAIL_INSUFFICIENT_RESOURCES;
+            cause = PDP_FAIL_INSUFFICIENT_RESOURCES;
             break;
 
         case PDP_MISSING_OR_UNKNOWN_APN:
-            cause = BCM_PDP_FAIL_MISSING_UKNOWN_APN;
+            cause = PDP_FAIL_MISSING_UKNOWN_APN;
             break;
 
         case PDP_UNKNOWN_PDP_ADDRESS:
-            cause = BCM_PDP_FAIL_UNKNOWN_PDP_ADDRESS_TYPE;
+            cause = PDP_FAIL_UNKNOWN_PDP_ADDRESS_TYPE;
             break;
 
         case PDP_USER_AUTH_FAILED:
-            cause = BCM_PDP_FAIL_USER_AUTHENTICATION;
+            cause = PDP_FAIL_USER_AUTHENTICATION;
             break;
 
         case PDP_ACTIVATION_REJECTED_BY_GGSN:
-            cause = BCM_PDP_FAIL_ACTIVATION_REJECT_GGSN;
+            cause = PDP_FAIL_ACTIVATION_REJECT_GGSN;
             break;
 
         case PDP_ACTIVATION_REJECTED_UNSPECIFIED:
-            cause = BCM_PDP_FAIL_ACTIVATION_REJECT_UNSPECIFIED;
+            cause = PDP_FAIL_ACTIVATION_REJECT_UNSPECIFIED;
             break;
 
         case PDP_SERVICE_OPT_NOT_SUPPORTED:
-            cause = BCM_PDP_FAIL_SERVICE_OPTION_NOT_SUPPORTED;
+            cause = PDP_FAIL_SERVICE_OPTION_NOT_SUPPORTED;
             break;
 
         case PDP_REQ_SERVICE_NOT_SUBSCRIBED:
-            cause = BCM_PDP_FAIL_SERVICE_OPTION_NOT_SUBSCRIBED;
+            cause = PDP_FAIL_SERVICE_OPTION_NOT_SUBSCRIBED;
             break;
 
         case PDP_SERVICE_TEMP_OUT_OF_ORDER:
-            cause = BCM_PDP_FAIL_SERVICE_OPTION_OUT_OF_ORDER;
+            cause = PDP_FAIL_SERVICE_OPTION_OUT_OF_ORDER;
             break;
 
         case PDP_NSAPI_ALREADY_USED:
-            cause = BCM_PDP_FAIL_NSAPI_IN_USE;
+            cause = PDP_FAIL_NSAPI_IN_USE;
             break;
 
         case PDP_PROTOCOL_ERROR_UNSPECIFIED:
-            cause = BCM_PDP_FAIL_PROTOCOL_ERRORS;
+            cause = PDP_FAIL_PROTOCOL_ERRORS;
             break;
 
         default:
-            cause = BCM_PDP_FAIL_ERROR_UNSPECIFIED;
+            cause = PDP_FAIL_ERROR_UNSPECIFIED;
             break;
     }
     return (int)cause;
@@ -176,7 +176,7 @@ void KRIL_SetupPdpHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp)
             if (NULL == pdata->ril_cmd->data)
             {
                 KRIL_DEBUG(DBG_ERROR, "PDPActivate Fail with NULL data\n");
-                pdata->result = BCM_E_GENERIC_FAILURE;
+                pdata->result = RIL_E_GENERIC_FAILURE;
                 pdata->handler_state = BCM_ErrorCAPI2Cmd;
                 break;
             }
@@ -210,14 +210,14 @@ void KRIL_SetupPdpHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp)
                             }
                             rdata->cid = pdp_resp[i].cid;
                             
-                            pdata->result = BCM_E_SUCCESS;
+                            pdata->result = RIL_E_SUCCESS;
                             pdata->handler_state = BCM_FinishCAPI2Cmd;
                             return;
                         }
                         else if (pdp_resp[i].active == 3)// connecting
                         {
                             KRIL_DEBUG(DBG_ERROR, "KRIL_SetupPdpHandler - Ignore due to state(Connecting) : apn %s \n", gContext.apn);                    
-                            pdata->result = BCM_E_GENERIC_FAILURE;
+                            pdata->result = RIL_E_GENERIC_FAILURE;
                             pdata->handler_state = BCM_ErrorCAPI2Cmd;
                             return;
                         }
@@ -228,7 +228,7 @@ void KRIL_SetupPdpHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp)
             if (BCM_NET_MAX_RIL_PDP_CNTXS == (pindex = GetFreePdpContext()))
             {
                 KRIL_DEBUG(DBG_ERROR, "PDPActivate Fail with over max cid[%d]\n", pindex);
-                pdata->result = BCM_E_GENERIC_FAILURE;
+                pdata->result = RIL_E_GENERIC_FAILURE;
                 pdata->handler_state = BCM_ErrorCAPI2Cmd;
                 break;
             }
@@ -274,7 +274,7 @@ void KRIL_SetupPdpHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp)
             {
                 KRIL_DEBUG(DBG_ERROR, "PDPActivate Fail to SetPDPContext[%d]\n", gContext.cid);
                 ReleasePdpContext(gContext.cid);
-                pdata->result = BCM_E_GENERIC_FAILURE;
+                pdata->result = RIL_E_GENERIC_FAILURE;
                 pdata->handler_state = BCM_ErrorCAPI2Cmd;
 				
 				KRIL_SetInSetupPDPHandler(FALSE);
@@ -311,7 +311,7 @@ void KRIL_SetupPdpHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp)
             {
                 KRIL_DEBUG(DBG_ERROR, "PDPActivate Fail to SendPDPActivateReq[%d] \n", gContext.cid);
                 ReleasePdpContext(gContext.cid);
-                pdata->result = BCM_E_GENERIC_FAILURE;
+                pdata->result = RIL_E_GENERIC_FAILURE;
                 pdata->handler_state = BCM_ErrorCAPI2Cmd;
 				KRIL_SetInSetupPDPHandler(FALSE);
                 break;
@@ -328,7 +328,7 @@ void KRIL_SetupPdpHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp)
                         rsp->cause, rsp->response, rsp->activatedContext.cid);
                     ReleasePdpContext(gContext.cid);
                     rdata->cause = ParsePdpFailCause(rsp->cause);
-                    pdata->result = BCM_E_RADIO_NOT_AVAILABLE;
+                    pdata->result = RIL_E_RADIO_NOT_AVAILABLE;
                     pdata->handler_state = BCM_ErrorCAPI2Cmd;
 					
 					KRIL_SetInSetupPDPHandler(FALSE);
@@ -373,12 +373,12 @@ void KRIL_SetupPdpHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp)
                     }
                 }
 
-                pdata->result = BCM_E_SUCCESS;
+                pdata->result = RIL_E_SUCCESS;
                 pdata->handler_state = BCM_FinishCAPI2Cmd;
             }
             else
             {
-                pdata->result = BCM_E_GENERIC_FAILURE;
+                pdata->result = RIL_E_GENERIC_FAILURE;
                 pdata->handler_state = BCM_ErrorCAPI2Cmd;
             }
 			
@@ -462,7 +462,7 @@ void KRIL_DeactivatePdpHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp)
             if(RESULT_OK != capi2_rsp->result)
             {
                 KRIL_DEBUG(DBG_ERROR, "PDPDeActivate Fail to SendPDPDeActivateReq \n");
-                pdata->result = BCM_E_GENERIC_FAILURE;
+                pdata->result = RIL_E_GENERIC_FAILURE;
                 pdata->handler_state = BCM_ErrorCAPI2Cmd;
                 break;
             }
@@ -474,7 +474,7 @@ void KRIL_DeactivatePdpHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp)
                 if(rsp->response != PCH_REQ_ACCEPTED)
                 {
                     KRIL_DEBUG(DBG_ERROR, "PDPDeActivate Fail resp(1 accept) %d, cid %d\r\n", rsp->response, rsp->cid);
-                    pdata->result = BCM_E_RADIO_NOT_AVAILABLE;
+                    pdata->result = RIL_E_RADIO_NOT_AVAILABLE;
                     pdata->handler_state = BCM_ErrorCAPI2Cmd;
                     break;
                 }
@@ -482,12 +482,12 @@ void KRIL_DeactivatePdpHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp)
                 rdata->cid = rsp->cid;
                 KRIL_DEBUG(DBG_INFO, "PDP Deactivate Resp - cid %d \n", rsp->cid);
 
-                pdata->result = BCM_E_SUCCESS;
+                pdata->result = RIL_E_SUCCESS;
                 pdata->handler_state = BCM_FinishCAPI2Cmd;
             }
             else
             {
-                pdata->result = BCM_E_GENERIC_FAILURE;
+                pdata->result = RIL_E_GENERIC_FAILURE;
                 pdata->handler_state = BCM_ErrorCAPI2Cmd;
             }
         }
@@ -520,7 +520,7 @@ void KRIL_DataStateHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp)
 		if (NULL == pdata->ril_cmd->data)
             {
                 KRIL_DEBUG(DBG_ERROR, "Enter Data State Fail with NULL data\n");
-            pdata->result = BCM_E_GENERIC_FAILURE;
+                pdata->result = RIL_E_GENERIC_FAILURE;
                 pdata->handler_state = BCM_ErrorCAPI2Cmd;
                 break;
             }
@@ -539,7 +539,7 @@ void KRIL_DataStateHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp)
 		 if(RESULT_OK != capi2_rsp->result)
             {
                 KRIL_DEBUG(DBG_ERROR, "Fail to send Enter Data State \n");
-            pdata->result = BCM_E_GENERIC_FAILURE;
+                pdata->result = RIL_E_GENERIC_FAILURE;
                 pdata->handler_state = BCM_ErrorCAPI2Cmd;
                 break;
             }	 
@@ -552,7 +552,7 @@ void KRIL_DataStateHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp)
 		if((gDataState.cid != NULL) && (*rsp== CONTEXT_UNDEFINED))
             {
             	   KRIL_DEBUG(DBG_ERROR, "[BCM_PDP_Verify]::CONTEXT_UNDEFINED\n");
-                pdata->result = BCM_E_GENERIC_FAILURE;
+                pdata->result = RIL_E_GENERIC_FAILURE;
                 pdata->handler_state = BCM_ErrorCAPI2Cmd;
                 break;
             }
@@ -572,14 +572,14 @@ void KRIL_DataStateHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp)
             if(RESULT_OK != capi2_rsp->result)
             {
                 KRIL_DEBUG(DBG_ERROR, "KRIL_DataStateHandler - Fail to send Enter Data State \n");
-            pdata->result = BCM_E_GENERIC_FAILURE;
+                pdata->result = RIL_E_GENERIC_FAILURE;
                 pdata->handler_state = BCM_ErrorCAPI2Cmd;
                 break;
             }	
 		else
 		{
             KRIL_DEBUG(DBG_INFO, "Enter data state Successful\r\n");
-            pdata->result = BCM_E_SUCCESS;
+                pdata->result = RIL_E_SUCCESS;
                 pdata->handler_state = BCM_FinishCAPI2Cmd;
 			}
         }
@@ -615,7 +615,7 @@ void KRIL_SendDataHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp)
     		if (NULL == pdata->ril_cmd->data)
             {
                 KRIL_DEBUG(DBG_ERROR, "Send Data Fail with NULL data\n");
-                pdata->result = BCM_E_GENERIC_FAILURE;
+                pdata->result = RIL_E_GENERIC_FAILURE;
                 pdata->handler_state = BCM_ErrorCAPI2Cmd;
                 break;
             }
@@ -641,7 +641,7 @@ void KRIL_SendDataHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp)
 		 if(RESULT_OK != capi2_rsp->result)
             {
                 KRIL_DEBUG(DBG_ERROR, "KRIL_DataStateHandler - Fail to send Enter Data State \n");
-                pdata->result = BCM_E_GENERIC_FAILURE;
+                pdata->result = RIL_E_GENERIC_FAILURE;
                 pdata->handler_state = BCM_ErrorCAPI2Cmd;
                 break;
             }	 
@@ -655,7 +655,7 @@ void KRIL_SendDataHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp)
             {
             	   KRIL_DEBUG(DBG_ERROR, "[BCM_PDP_Verify]::CONTEXT_UNDEFINED\n");
 //             KRIL_DEBUG(DBG_ERROR, "%d CID not supported\n", gDataState.cid);
-                    pdata->result = BCM_E_GENERIC_FAILURE;
+                pdata->result = RIL_E_GENERIC_FAILURE;
                 pdata->handler_state = BCM_ErrorCAPI2Cmd;
                 break;
             }
@@ -674,7 +674,7 @@ void KRIL_SendDataHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp)
             if(RESULT_OK != capi2_rsp->result)
             {
                 KRIL_DEBUG(DBG_ERROR, "KRIL_SendDataHandler - Fail to send data \n");
-                pdata->result = BCM_E_GENERIC_FAILURE;
+                pdata->result = RIL_E_GENERIC_FAILURE;
                 pdata->handler_state = BCM_ErrorCAPI2Cmd;
                 break;
             }	
@@ -682,7 +682,8 @@ void KRIL_SendDataHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp)
 		{
 			 KRIL_DEBUG(DBG_ERROR, "KRIL_DataStateHandler - RESULT_OK-> result:0x%x\n\n",  capi2_rsp->result);		
 		}
-            pdata->result = BCM_E_SUCCESS;
+				
+		  pdata->result = RIL_E_SUCCESS;
                 pdata->handler_state = BCM_FinishCAPI2Cmd;
 	  }	
 	break;

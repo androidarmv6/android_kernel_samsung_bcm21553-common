@@ -309,8 +309,7 @@ void KRIL_InitCmdHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp)
             pdata->handler_state = BCM_CFG_SIM_LOCK_SUPPORTED;
             break;
         }
-
-         case BCM_CFG_SIM_LOCK_SUPPORTED:
+        case BCM_CFG_SIM_LOCK_SUPPORTED:
         {
             CAPI2_MS_Element_t data;
             memset((UInt8*)&data, 0x00, sizeof(CAPI2_MS_Element_t));
@@ -389,7 +388,7 @@ void KRIL_InitCmdHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp)
         case BCM_SET_RADIO_OFF:
         {
             // For flight mode power up battery ADC & deep sleep issue (MobC00131482), set the initial CP state to RADIO_OFF.
-            // If MS is powered up in normal mode, Android framework will send BRCM_RIL_REQUEST_RADIO_POWER to RIL.
+            // If MS is powered up in normal mode, Android framework will send RIL_REQUEST_RADIO_POWER to RIL.
             CAPI2_InitClientInfo(&clientInfo, GetNewTID(), GetClientID());
             CAPI2_PhoneCtrlApi_ProcessNoRfReq(&clientInfo);
             pdata->handler_state = BCM_RESPCAPI2Cmd;
@@ -418,6 +417,7 @@ void KRIL_InitCmdHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp)
      But the PIN is NOT required  if using CAPI2_SYS_ProcessPowerUpReq to turned off Airplane mode.
      Workaround: Power off and then on the sim card, the CP will do the unlock sim process.
 */
+static int RadioDuringRefresh = 0;
 void KRIL_RadioPowerHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp)
 {
     KRIL_CmdList_t *pdata = (KRIL_CmdList_t *)ril_cmd;
@@ -436,10 +436,26 @@ void KRIL_RadioPowerHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp)
 
 			if(gIsStkRefreshReset == TRUE){
 				
+				RadioDuringRefresh ++;
+				KRIL_DEBUG(DBG_INFO, "Refresh : RadioDuringRefresh %d\n",RadioDuringRefresh);
+				if(RadioDuringRefresh >= 3){
+					if(RadioDuringRefresh == 4){
+						RadioDuringRefresh = 0;
+						gIsStkRefreshReset = FALSE;
+					}
+						
+					KRIL_DEBUG(DBG_INFO, "Skip power on-off - Refresh\n");
+					pdata->bcm_ril_rsp = NULL;
+					pdata->rsp_len = 0;
+					pdata->handler_state = BCM_FinishCAPI2Cmd;
+					break;
+
+				}
+				
 				if(*OnOff == 0){
 					KRIL_DEBUG(DBG_INFO, "Power off Sim card - Refresh\n");
                     CAPI2_InitClientInfo(&clientInfo, GetNewTID(), GetClientID());
-                    CAPI2_SimApi_PowerOnOffCard (&clientInfo, FALSE, SIM_POWER_OFF_FORCE_MODE);
+                    CAPI2_SimApi_PowerOnOffCard (&clientInfo, FALSE, SIM_POWER_ON_INVALID_MODE);
                     pdata->handler_state = BCM_RESPCAPI2Cmd;
 
 				}else{
@@ -447,7 +463,7 @@ void KRIL_RadioPowerHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp)
 					CAPI2_InitClientInfo(&clientInfo, GetNewTID(), GetClientID());
 					CAPI2_SimApi_PowerOnOffCard (&clientInfo, TRUE, SIM_POWER_ON_NORMAL_MODE);
 					pdata->handler_state = BCM_RESPCAPI2Cmd;
-					gIsStkRefreshReset = FALSE;
+					//gIsStkRefreshReset = FALSE;
 				}
 				break;
 
@@ -482,11 +498,15 @@ void KRIL_RadioPowerHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp)
             KRIL_DEBUG(DBG_INFO, "On-Off:%d\n", *OnOff);
             if (1 == *OnOff)
             {
-            	  KRIL_DEBUG(DBG_ERROR, "KRIL_RadioPowerHandler: Offline off\n");
-            	  KRIL_DEBUG(DBG_ERROR, "satk_setup_menu_tlv_data_string: %s\n",satk_setup_menu_tlv_data_string);
-            	  KRIL_DEBUG(DBG_ERROR, "satk_setup_menu_tlv_length: %d\n",satk_setup_menu_tlv_length);
-	         if(satk_setup_menu_tlv_length!=0)
-                	KRIL_SendNotify(BRCM_RIL_UNSOL_STK_PROACTIVE_COMMAND, satk_setup_menu_tlv_data_string, (satk_setup_menu_tlv_length * 2 + 1));
+            	if(!gIsFlightModeOnBoot) 	// 2011-08-31 smseol@truemobile.com Running Setup_Menu twice during Boot Sequence on special SIM
+            	{
+            	  	KRIL_DEBUG(DBG_ERROR, "KRIL_RadioPowerHandler: Offline off\n");
+            	  	KRIL_DEBUG(DBG_ERROR, "satk_setup_menu_tlv_data_string: %s\n",satk_setup_menu_tlv_data_string);
+            	  	KRIL_DEBUG(DBG_ERROR, "satk_setup_menu_tlv_length: %d\n",satk_setup_menu_tlv_length);
+	         				
+	         				if(satk_setup_menu_tlv_length!=0)
+                	KRIL_SendNotify(RIL_UNSOL_STK_PROACTIVE_COMMAND, satk_setup_menu_tlv_data_string, (satk_setup_menu_tlv_length * 2 + 1));
+                }			// 2011-08-31 smseol@truemobile.com Running Setup_Menu twice during Boot Sequence on special SIM
             }
 
             break;
@@ -1004,12 +1024,12 @@ void ParseIMSIData(KRIL_CmdList_t *pdata, Kril_CAPI2Info_t *capi2_rsp)
     if ( capi2_rsp->result != RESULT_OK )
     {
         KRIL_DEBUG(DBG_ERROR,"IMSI: SIM access failed!! result:%d\n",capi2_rsp->result);
-        imsi_result->result = BCM_E_GENERIC_FAILURE;
+        imsi_result->result = RIL_E_GENERIC_FAILURE;
     }
     else
     {
-        imsi_result->result = BCM_E_SUCCESS;
-        // KRIL_DEBUG(DBG_INFO,"IMSI:%s\n", (char*)rsp);
+        imsi_result->result = RIL_E_SUCCESS;
+        KRIL_DEBUG(DBG_INFO,"IMSI:%s\n", (char*)rsp);
         strncpy(imsi_result->imsi, (char*)rsp, (IMSI_DIGITS+1));
     }
     
@@ -1054,7 +1074,7 @@ static void ParseIMEIData(KRIL_CmdList_t* pdata, Kril_CAPI2Info_t* capi2_rsp)
     if (rsp->inElemType != MS_LOCAL_PHCTRL_ELEM_IMEI)
     {
         KRIL_DEBUG(DBG_ERROR,"IMEI: inElemType Error!! inElemType:%d\n",rsp->inElemType);
-        imei_result->result = BCM_E_GENERIC_FAILURE;
+        imei_result->result = RIL_E_GENERIC_FAILURE;
     }
     else
     {
@@ -1064,7 +1084,7 @@ static void ParseIMEIData(KRIL_CmdList_t* pdata, Kril_CAPI2Info_t* capi2_rsp)
         Boolean bUseMSDBImei = FALSE;
         UInt8* pMSDBImeiStr = (UInt8*)rsp->data_u.imeidata;
 
-        imei_result->result = BCM_E_SUCCESS;
+        imei_result->result = RIL_E_SUCCESS;
         
         do
         {
@@ -1077,7 +1097,7 @@ static void ParseIMEIData(KRIL_CmdList_t* pdata, Kril_CAPI2Info_t* capi2_rsp)
             // MS database IMEI is not all 0's, so we use it
             strncpy(imei_result->imei, pMSDBImeiStr, IMEI_DIGITS);
             imei_result->imei[IMEI_DIGITS] = '\0';
-            KRIL_DEBUG(DBG_INFO,"Using MS DB IMEI\n");
+            KRIL_DEBUG(DBG_INFO,"Using MS DB IMEI:%s\n", pMSDBImeiStr );
         }
         else
         {
@@ -1090,13 +1110,13 @@ static void ParseIMEIData(KRIL_CmdList_t* pdata, Kril_CAPI2Info_t* capi2_rsp)
             if ( bFound )
             {
                 // got it from sysparms, so copy to the response struct
-                KRIL_DEBUG(DBG_INFO,"Using sysparm IMEI\n");
+                KRIL_DEBUG(DBG_INFO,"Using sysparm IMEI:%s\n", tmpImeiStr );
                 strncpy(imei_result->imei, tmpImeiStr, IMEI_STRING_LEN);
             }
             else
             {
                 KRIL_DEBUG(DBG_INFO,"** SYSPARM_GetImeiStr() failed\n" );
-                imei_result->result = BCM_E_GENERIC_FAILURE;
+                imei_result->result = RIL_E_GENERIC_FAILURE;
             }
         }
         

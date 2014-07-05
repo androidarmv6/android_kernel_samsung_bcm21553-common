@@ -35,7 +35,7 @@
 extern "C" {
 #endif
 
-#define URILC_REQUEST_BASE  (BRCM_RIL_UNSOL_RESPONSE_BASE - 100)
+#define URILC_REQUEST_BASE  (RIL_UNSOL_RESPONSE_BASE - 100)
 
 
 
@@ -270,7 +270,7 @@ extern "C" {
 
 
 
-#define URILC_UNSOL_RESPONSE_BASE	(BRCM_RIL_UNSOL_RESPONSE_BASE + 500)
+#define URILC_UNSOL_RESPONSE_BASE	(RIL_UNSOL_RESPONSE_BASE + 500)
 
 /***********************************************************************/
 

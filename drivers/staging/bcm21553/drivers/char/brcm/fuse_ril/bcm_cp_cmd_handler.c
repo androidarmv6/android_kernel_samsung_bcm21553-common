@@ -657,14 +657,13 @@ void CAPI2_SIMLOCK_GetStatus(UInt32 tid, UInt8 clientID, SIMLOCK_SIM_DATA_t *sim
 
 	
 	if(sim_data->gid1_len > 0)
-               	memcpy(&msg[5 + IMSI_DIGITS + 1 + 1],sim_data->gid1,GID_DIGITS); //GID1
-               
+		memcpy(&msg[5 + IMSI_DIGITS + 1 + 1],sim_data->gid1,GID_DIGITS); //GID1
 
 	msg[5 + IMSI_DIGITS + 1 + 1 + GID_DIGITS] = sim_data->gid2_len;
 	if(sim_data->gid2_len > 0)
-       		memcpy(&msg[5 + IMSI_DIGITS + 1 + 1 + GID_DIGITS + 1],sim_data->gid2,GID_DIGITS); //GID2
+		memcpy(&msg[5 + IMSI_DIGITS + 1 + 1 + GID_DIGITS + 1],sim_data->gid2,GID_DIGITS); //GID2
 
-	KRIL_SendNotify(BRCM_RIL_UNSOL_OEM_HOOK_RAW, msg, sizeof(msg));
+	KRIL_SendNotify(RIL_UNSOL_OEM_HOOK_RAW, msg, sizeof(msg));
 
 
 }

@@ -937,8 +937,6 @@ bool_t xdr_CAPI2_MS_Element_t(XDR* xdrs, CAPI2_MS_Element_t *rsp)
 			//If you see this assert then add the element in data_u of CAPI2_MS_Element_t.
 			xassert( (sizeof(entry->unsize) <= sizeof(rsp->data_u) ), dscm);
 			
-			// Defense for Logging Checker
-			/*
 			_DBG_(CAPI2_TRACE("[CAPI2] MS_Element_t[%d] %s : value={%x %x %x %x %x %x %x %x}\r\n",rsp->inElemType, 
 																	(entry->debugStr)?entry->debugStr:"<>", 
 																	rsp->data_u.u10Bytes[0],  
@@ -949,7 +947,6 @@ bool_t xdr_CAPI2_MS_Element_t(XDR* xdrs, CAPI2_MS_Element_t *rsp)
 																	rsp->data_u.u10Bytes[5],  
 																	rsp->data_u.u10Bytes[6],  
 																	rsp->data_u.u10Bytes[7]));
-			*/
 		}
 		return(TRUE);
 	}

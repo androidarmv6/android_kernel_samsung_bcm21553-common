@@ -145,7 +145,7 @@ typedef struct kril_cmd // Command list
     UInt32 cmd;
     UInt32 tid;
     UInt32 handler_state;
-    BRIL_Errno result;      //Response result
+    RIL_Errno result;      //Response result
     KRIL_Command_t *ril_cmd;
     void *bcm_ril_rsp;
     UInt32 rsp_len;
@@ -252,8 +252,8 @@ void KRIL_SetWaitingCallIndex(UInt8 IncomingCallIndex);
 UInt8 KRIL_GetWaitingCallIndex(void);
 void KRIL_SetCallType(int index, CCallType_t theCallType);
 CCallType_t KRIL_GetCallType(int index);
-void KRIL_SetCallState(int index, BRIL_CallState theCallState);
-BRIL_CallState KRIL_GetCallState(int index);
+void KRIL_SetCallState(int index, RIL_CallState theCallState);
+RIL_CallState KRIL_GetCallState(int index);
 void KRIL_ClearCallNumPresent(void);
 void KRIL_SetCallNumPresent(int index, PresentationInd_t present, UInt8 c_num);
 PresentationInd_t KRIL_GetCallNumPresent(int index);
@@ -263,9 +263,9 @@ void KRIL_SetIsNeedMakeCall(Boolean MakeCall);
 Boolean KRIL_GetIsNeedMakeCall(void);
 void KRIL_SetHungupForegroundResumeBackgroundEndMPTY(UInt32 tid);
 UInt32 KRIL_GetHungupForegroundResumeBackgroundEndMPTY(void);
-void KRIL_SetLastCallFailCause(BRIL_LastCallFailCause inCause);
-BRIL_LastCallFailCause KRIL_GetLastCallFailCause(void);
-BRIL_LastCallFailCause KRIL_MNCauseToRilError(Cause_t inMNCause);
+void KRIL_SetLastCallFailCause(RIL_LastCallFailCause inCause);
+RIL_LastCallFailCause KRIL_GetLastCallFailCause(void);
+RIL_LastCallFailCause KRIL_MNCauseToRilError(Cause_t inMNCause);
 
 // for Network
 void KRIL_SetInSetPrefNetworkTypeHandler( Boolean inHandler );
@@ -353,6 +353,6 @@ void KRIL_CmdQueueWork(void);
 void KRIL_SendNotify(int CmdID, void *rsp_data, UInt32 rsp_len);
 
 // for error cause transform
-BRIL_Errno RILErrorResult(Result_t err);
-BRIL_Errno RILErrorSIMResult(SIMAccess_t err);
+RIL_Errno RILErrorResult(Result_t err);
+RIL_Errno RILErrorSIMResult(SIMAccess_t err);
 #endif //_BCM_KRIL_CMD_HANDLER_H

@@ -856,7 +856,6 @@ typedef struct tag_CAPI2_ReqRep_t
 	CAPI2_USSD_SESSION_END_IND_Rsp_t   CAPI2_USSD_SESSION_END_IND_Rsp;
 	CAPI2_MS_SetSupportedRATandBand_Req_t   CAPI2_MS_SetSupportedRATandBand_Req;
 	CAPI2_MNCC_CLIENT_FACILITY_IND_Rsp_t   CAPI2_MNCC_CLIENT_FACILITY_IND_Rsp;
-	CAPI2_PbkReadyInd_Rsp_t   CAPI2_PbkReadyInd_Rsp;
 /*********  _CAPI2_CODE_GEN_END_ ************/
 	} req_rep_u;
 } CAPI2_ReqRep_t;
