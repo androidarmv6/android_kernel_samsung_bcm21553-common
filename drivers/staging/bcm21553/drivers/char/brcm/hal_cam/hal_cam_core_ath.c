@@ -1591,8 +1591,15 @@ int camera_enable(CamSensorSelect_t sensor)
 		c->sens_m->
 			  DRV_SetVideoCaptureMode(c->main.size_window.size,
 						  c->main.format, sensor,c->main.mode);
+<<<<<<< HEAD
 //		c->sens_m->DRV_SetFrameRate(c->main.fps, sensor);
 //		c->sens_m->DRV_EnableVideoCapture(sensor);
+=======
+#ifndef CONFIG_BCM_CAM_S5K4ECGX
+		c->sens_m->DRV_SetFrameRate(c->main.fps, sensor);
+		c->sens_m->DRV_EnableVideoCapture(sensor);
+#endif
+>>>>>>> 64e6fb7914164a5456034582bb7b3e6caacd8e55
 		/* Sensor driver methods to enable video modes */
 		if(csl_cam_rx_start(c->hdl))
 			printk(KERN_INFO"Unable to start RX\n");
@@ -1603,7 +1610,11 @@ int camera_enable(CamSensorSelect_t sensor)
 	
 	enable_irq(c->cam_irq);
 
+<<<<<<< HEAD
 #if 0	
+=======
+#ifndef CONFIG_BCM_CAM_S5K4ECGX
+>>>>>>> 64e6fb7914164a5456034582bb7b3e6caacd8e55
     if (c->main.format == CamDataFmtJPEG)      // In case of JPEG capture
     {
         c->sCaptureFrameCountdown = 1;
@@ -1647,7 +1658,13 @@ int camera_disable(CamSensorSelect_t sensor)
 	} else {
 		printk(KERN_INFO "Disabling stream\n");
 		csl_cam_rx_stop(c->hdl);
+<<<<<<< HEAD
 //		c->sens_m->DRV_DisablePreview(sensor);
+=======
+#ifndef CONFIG_BCM_CAM_S5K4ECGX
+		c->sens_m->DRV_DisablePreview(sensor);
+#endif
+>>>>>>> 64e6fb7914164a5456034582bb7b3e6caacd8e55
 	}
 	writel(0x3f0f, io_p2v(BCM21553_MLARB_BASE + 0x100)); //BMARBL_MACONF0 
 	csl_cam_reset(c->hdl, (CSL_CAM_RESET_t)(CSL_CAM_RESET_SWR | CSL_CAM_RESET_ARST ));
@@ -2138,8 +2155,14 @@ board_sysconfig(SYSCFG_CAMERA,SYSCFG_INIT);
 //	gpio_request(S5K4ECGX_CORE_GPIO, NULL); 
 //	cam_power_up(cam_g->curr);
 //	msleep(50);
+<<<<<<< HEAD
 #endif
 //	cam_power_down(cam_g->curr);
+=======
+#else
+	cam_power_down(cam_g->curr);
+#endif
+>>>>>>> 64e6fb7914164a5456034582bb7b3e6caacd8e55
 	in = ktime_get();
 	printk(KERN_INFO"Cam_init end sec %d nsec %d\n",in.tv.sec,in.tv.nsec);
 	return rc;
