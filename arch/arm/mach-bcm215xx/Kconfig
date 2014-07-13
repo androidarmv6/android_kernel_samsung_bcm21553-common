@@ -147,7 +147,7 @@ depends on ARCH_BCM215XX
 config MM_MEMPOOL_BASE_ADDR
 hex "Base address for multimedia memory"
 default 0
-depends on GE_WRAP
+depends on GE_WRAP || BMEM
 depends on ARCH_BCM215XX
 
 config BCM21553_L2_EVCT
