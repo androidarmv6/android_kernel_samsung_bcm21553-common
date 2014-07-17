@@ -62,6 +62,10 @@ bma222acc_t g_acc;
 
 #define	ACC_ENABLED 1
 
+#if defined(CONFIG_SENSORS_LUISA)
+extern void prox_ctrl_regulator_forced(void);
+#endif
+
 /* globe variant */
 static struct i2c_client *bma222_client = NULL;
 struct class *acc_class;
@@ -1015,6 +1019,10 @@ static int __init BMA222_init(void)
 	struct device *dev_t;
 
 	printk(KERN_INFO "[BMA222] %s\n",__FUNCTION__);
+
+#if defined(CONFIG_SENSORS_LUISA)
+        prox_ctrl_regulator_forced();
+#endif
 
 	acc_class = class_create(THIS_MODULE, "accelerometer");
 

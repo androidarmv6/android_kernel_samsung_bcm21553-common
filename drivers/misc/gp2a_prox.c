@@ -56,6 +56,24 @@ static struct miscdevice gp2a_prox_misc_device = {
 extern int bcm_gpio_pull_up(unsigned int gpio, bool up);
 extern int bcm_gpio_pull_up_down_enable(unsigned int gpio, bool enable);
 
+#if defined(CONFIG_SENSORS_LUISA)
+void prox_ctrl_regulator_forced(void)
+{
+	prox_regulator = regulator_get(NULL,"prox_vcc");
+       
+	if(!regulator_is_enabled(prox_regulator))
+	{
+		regulator_set_voltage(prox_regulator,2900000,2900000);
+		regulator_enable(prox_regulator);
+                printk(KERN_INFO "[GP2A] : prox_ctrl_regulator_forced \n");                          
+                prox_power_mode = true;        
+        /*After Power Supply is supplied, about 1ms delay is required before issuing read/write commands */
+                mdelay(2);            
+	}
+}
+EXPORT_SYMBOL(prox_ctrl_regulator_forced);
+#endif
+
 static void prox_ctrl_regulator(int on_off)
 {
 	if(on_off)

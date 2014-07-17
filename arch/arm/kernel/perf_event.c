@@ -319,6 +319,9 @@ validate_event(struct cpu_hw_events *cpuc,
 {
 	struct hw_perf_event fake_event = event->hw;
 
+	if (is_software_event(event))
+		return 1;
+
 	if (event->pmu && event->pmu != &pmu)
 		return 0;
 
@@ -1077,7 +1080,11 @@ armv6pmu_stop(void)
 static inline int
 armv6pmu_event_map(int config)
 {
-	int mapping = armv6_perf_map[config];
+	int mapping;
+ 
+	if (config >= PERF_COUNT_HW_MAX)
+		return -ENOENT;
+	mapping = armv6_perf_map[config];
 	if (HW_OP_UNSUPPORTED == mapping)
 		mapping = -EOPNOTSUPP;
 	return mapping;
@@ -1086,7 +1093,11 @@ armv6pmu_event_map(int config)
 static inline int
 armv6mpcore_pmu_event_map(int config)
 {
-	int mapping = armv6mpcore_perf_map[config];
+	int mapping;
+ 
+	if (config >= PERF_COUNT_HW_MAX)
+		return -ENOENT;
+	mapping = armv6mpcore_perf_map[config];
 	if (HW_OP_UNSUPPORTED == mapping)
 		mapping = -EOPNOTSUPP;
 	return mapping;

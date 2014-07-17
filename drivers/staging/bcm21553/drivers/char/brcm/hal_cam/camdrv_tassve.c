@@ -1410,6 +1410,11 @@ HAL_CAM_Result_en_t CAMDRV_SetSceneMode(CamSceneMode_t scene_mode,
         }
 
 	gv_Nightshot_mode =FALSE;
+        if(scene_mode!=CamSceneMode_Auto)
+        {
+            pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_EFFECT_NONE);
+	          pstSensor->m_pstAPIs->WriteDirectSensorData( pstSensor, CAMACQ_SENSORDATA_SCENE_NONE);
+        }
 
 	switch(scene_mode) {
            case CamSceneMode_Auto:

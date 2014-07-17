@@ -156,22 +156,41 @@ const char *__bdevname(dev_t dev, char *buffer)
 
 EXPORT_SYMBOL(__bdevname);
 
+struct parsed_partitions *g_state = NULL;
+
 static struct parsed_partitions *
 check_partition(struct gendisk *hd, struct block_device *bdev)
 {
 	struct parsed_partitions *state;
 	int i, res, err;
+	int retry;
 
-	state = kzalloc(sizeof(struct parsed_partitions), GFP_KERNEL);
-	if (!state){
-		state = (struct parsed_partitions *)vmalloc(sizeof(struct parsed_partitions));
-        	if (!state)
-	        	return NULL;
-
-		memset(state, 0, sizeof(struct parsed_partitions));
-		state->is_kzalloc = false;
-	} else
-	        state->is_kzalloc = true;
+	int is_sdcard = strcmp(bdev->bd_disk->disk_name, "mmcblk0");
+	if(is_sdcard || !g_state)
+	{
+		for(retry = 0 ; retry < 20 ; retry++)
+		{
+			state = kzalloc(sizeof(struct parsed_partitions), GFP_KERNEL);
+			if(state)
+			{
+				printk(KERN_INFO "%s: First Time Success kzalloc %s\n", __func__, bdev->bd_disk->disk_name);
+				break;
+			}
+			schedule();
+			printk(KERN_INFO "%s : Fail kzalloc fail(%d/20) %s\n",__func__, retry, bdev->bd_disk->disk_name);
+		}
+	
+		if(!state)
+			return NULL;
+		if(!is_sdcard)
+			g_state = state;
+	}
+	else
+	{
+		printk(KERN_INFO "%s: Second Time Success kzalloc %s\n", __func__, bdev->bd_disk->disk_name);
+		memset(g_state, 0, sizeof(struct parsed_partitions));
+		state = g_state;
+	}
 
 	state->bdev = bdev;
 	disk_name(hd, 0, state->name);
@@ -205,10 +224,8 @@ check_partition(struct gendisk *hd, struct block_device *bdev)
 	else if (warn_no_part)
 		printk(" unable to read partition table\n");
 		
-	if( state->is_kzalloc )
-	        kfree(state);
-	else
-		vfree(state);
+	if(is_sdcard)
+		kfree(state);
 		
 	return ERR_PTR(res);
 }
@@ -602,13 +619,10 @@ int rescan_partitions(struct gendisk *disk, struct block_device *bdev)
 	int p, highest, res;
 rescan:
 	if (state && !IS_ERR(state)) {
-		
-		if( state->is_kzalloc )
-	        	kfree(state);
-		else
-			vfree(state);
-			
+		kfree(state);
 		state = NULL;
+		if (!strcmp(bdev->bd_disk->disk_name,"mmcblk0"))
+			g_state = NULL;
 	}
 
 	if (bdev->bd_part_count)
@@ -718,10 +732,8 @@ rescan:
 #endif
 	}
 	
-	if( state->is_kzalloc)
-	        kfree(state);
-	else
-		vfree(state);
+	if (strcmp(bdev->bd_disk->disk_name,"mmcblk0"))
+		kfree(state);
 	return 0;
 }
 

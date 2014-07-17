@@ -1393,7 +1393,7 @@ static void max8986_batt_lvl_mon_wq(struct work_struct *work)
 		cnt_func_called++;
 
 		if( ((check_func_called_by_cp==true) && (cnt_func_called>=10)) ||( cnt_func_called  >= 60) ||( init_batt_lvl_interval<=3)
-                      || ((check_func_called_by_cp==true) && (max8986_power->charging_status ==  POWER_SUPPLY_STATUS_FULL)) )
+                      || ((check_func_called_by_cp==true) && (max8986_power->charging_status ==  POWER_SUPPLY_STATUS_FULL)))
 		{
 			pr_info("%s: cnt_func_called=%d init_batt_lvl_interval=%d\n",__func__, cnt_func_called,init_batt_lvl_interval);
 			cnt_func_called=0;
@@ -1784,6 +1784,7 @@ extern void pmu_start_charging(void)
 	max8986_power = platform_get_drvdata(power_device);
 	if(max8986_power)
 	{
+		pr_info("%s: charger_type:%d \n", __func__,max8986_power->charger_type);
 		max8986_start_charging(max8986_power,max8986_power->charger_type);
 	}
 }
@@ -1801,6 +1802,7 @@ extern void pmu_stop_charging(void)
 	max8986_power = platform_get_drvdata(power_device);
 	if(max8986_power)
 	{
+		pr_info("%s \n", __func__);
 		max8986_stop_charging(max8986_power, false);
 	}
 }
