@@ -143,6 +143,12 @@ static struct mtd_partition * newpart(char *s,
 		s += 2;
         }
 
+        /* SAMSUNG HACK: parse the rw flag (do nothing) */
+        if (strncmp(s, "rw", 2) == 0)
+	{
+		s += 2;
+        }
+
         /* if lk is found do NOT unlock the MTD partition*/
         if (strncmp(s, "lk", 2) == 0)
 	{
