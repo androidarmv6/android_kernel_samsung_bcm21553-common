@@ -268,7 +268,7 @@ MODULE_ALIAS(DRIVER_NAME);
 static int __init bcm_onenand_init(void)
 {
 //++ ASW3.SOS.jinuk : block the MTD initialization
-//	return platform_driver_register(&bcm_onenand_driver);
+	return platform_driver_register(&bcm_onenand_driver);
 //-- ASW3.SOS.jinuk : block the MTD initialization
 }
 
