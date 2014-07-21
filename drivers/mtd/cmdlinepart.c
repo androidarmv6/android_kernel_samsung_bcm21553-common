@@ -133,6 +133,13 @@ static struct mtd_partition * newpart(char *s,
 		name_len = 13; /* Partition_000 */
 	}
 
+	/* SAMSUNG HACK: swap /system and /data partitions */
+	if (strncmp(name, "system)", 7) == 0) {
+		name_len = 8; //userdata
+	} else if (strncmp(name, "userdata)", 7) == 0) {
+		name_len = 6; //system
+	}
+
 	/* record name length for memory allocation later */
 	extra_mem_size += name_len + 1;
 
@@ -191,7 +198,16 @@ static struct mtd_partition * newpart(char *s,
 	parts[this_part].mask_flags = mask_flags;
 	if (name)
 	{
-		strlcpy(extra_mem, name, name_len + 1);
+		/* SAMSUNG HACK: swap /system and /data partitions */
+		if (strncmp(name, "system)", 7) == 0) {
+			strlcpy(extra_mem, "userdata", name_len + 1);
+			dbg(("remapping <%s> partition to <system>\n", extra_mem));
+		} else if (strncmp(name, "userdata)", 9) == 0) {
+			strlcpy(extra_mem, "system", name_len + 1);
+			dbg(("remapping <%s> partition to <userdata>\n", extra_mem));
+		} else {
+			strlcpy(extra_mem, name, name_len + 1);
+		}
 	}
 	else
 	{
