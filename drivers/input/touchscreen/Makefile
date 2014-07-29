@@ -64,4 +64,9 @@ obj-$(CONFIG_TOUCHSCREEN_TPS6507X)	+= tps6507x-ts.o
 obj-$(CONFIG_TOUCHSCREEN_TSC2017)	+= tsc2017.o
 obj-$(CONFIG_TOUCHSCREEN_EPML)          += epml_touch.o
 obj-$(CONFIG_TOUCHSCREEN_PCAP7200)	+= pcap7200_ts.o
-obj-$(CONFIG_TOUCHSCREEN_F760) += silabs_f760.o	bl_master.o
+ifeq ($(CONFIG_BOARD_TOTORO),y)
+	obj-$(CONFIG_TOUCHSCREEN_F760) += silabs_f760_totoro.o	bl_master.o
+else
+	obj-$(CONFIG_TOUCHSCREEN_F760) += silabs_f760.o	bl_master.o
+endif
+obj-$(CONFIG_TOUCHSCREEN_TMA140)	+= synaptics_i2c_rmi_tma140_totoro.o tma140_download_totoro.o

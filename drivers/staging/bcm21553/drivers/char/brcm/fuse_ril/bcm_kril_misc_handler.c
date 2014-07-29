@@ -186,7 +186,7 @@ void KRIL_InitCmdHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp)
         case BCM_SYS_SetFilteredEventMask:
         {
             UInt16 filterList[]={MSG_RSSI_IND, MSG_CELL_INFO_IND, MSG_LCS_RRC_UE_STATE_IND, 
-                                 MSG_DATE_TIMEZONE_IND, MSG_DATA_SUSPEND_IND, 
+                                 MSG_DATA_SUSPEND_IND, 
                                  MSG_DATA_RESUME_IND, MSG_CAPI2_AT_RESPONSE_IND, 
                                  MSG_UE_3G_STATUS_IND};
             CAPI2_SYS_SetFilteredEventMask(GetNewTID(), GetClientID(), &filterList[0], sizeof(filterList)/sizeof(UInt16), SYS_AP_DEEP_SLEEP_MSG_FILTER);

@@ -55,8 +55,9 @@ start_readmac:
 			
 			sprintf(macbuffer,"%02X:%02X:%02X:%02X:%02X:%02X\n",
 				0x12,0x34,0x56,randommac[0],randommac[1],randommac[2]);
+#ifdef BRCM_SECURITY_LOG
 			DHD_ERROR(("[WIFI] The Random Generated MAC ID : %s\n", macbuffer));
-
+#endif
 			if(fp->f_mode & FMODE_WRITE) {			
 				ret = fp->f_op->write(fp, (const char *)macbuffer, sizeof(macbuffer), &fp->f_pos);
 				if(ret < 0)
@@ -337,8 +338,10 @@ int CheckRDWR_Macaddr(	struct dhd_info *dhd, dhd_pub_t *dhdp, struct ether_addr 
 	if((g_iMacFlag == MACADDR_COB_RANDOM) || (g_iMacFlag == MACADDR_MOD_RANDOM)) {
 		get_random_bytes(randommac, 3);
 		sprintf(macbuffer,"%02X:%02X:%02X:%02X:%02X:%02X\n",
-				0x12,0x34,0x56,randommac[0],randommac[1],randommac[2]);		
+				0x12,0x34,0x56,randommac[0],randommac[1],randommac[2]);
+#ifdef BRCM_SECURITY_LOG
 		DHD_ERROR(("[WIFI] The Random Generated MAC ID : %s\n", macbuffer));
+#endif
 		sscanf(macbuffer,"%02X:%02X:%02X:%02X:%02X:%02X",
 			   &(mac->octet[0]), &(mac->octet[1]), &(mac->octet[2]), 
 			   &(mac->octet[3]), &(mac->octet[4]), &(mac->octet[5]));

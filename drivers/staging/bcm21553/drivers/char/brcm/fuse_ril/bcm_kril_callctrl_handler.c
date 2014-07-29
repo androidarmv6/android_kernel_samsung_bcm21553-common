@@ -256,7 +256,7 @@ void KRIL_GetCurrentCallHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp)
                 {
                     rdata->KRILCallState[rdata->KRILCallState[rdata->index].index].numberPresentation = 2; //Not Specified/Unknown
                 }
-                CAPI2_CC_IsMultiPartyCall(GetNewTID(), GetClientID(), rdata->KRILCallState[rdata->index].index);
+                CAPI2_IsCurrentStateMpty(GetNewTID(), GetClientID(), rdata->KRILCallState[rdata->index].index);
                 pdata->handler_state = BCM_CC_IsMultiPartyCall;
             }
         }
@@ -282,7 +282,7 @@ void KRIL_GetCurrentCallHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp)
             }
             strncpy(rdata->KRILCallState[rdata->index].number, rsp->phone_number, PHONE_NUMBER_LENGTH_MAX);
             KRIL_DEBUG(DBG_INFO, "MSG_CC_GETCALLNUMBER_RSP::rdata->index:%d\n", rdata->index);
-            CAPI2_CC_IsMultiPartyCall(GetNewTID(), GetClientID(), rdata->KRILCallState[rdata->index].index);
+            CAPI2_IsCurrentStateMpty(GetNewTID(), GetClientID(), rdata->KRILCallState[rdata->index].index);
             pdata->handler_state = BCM_CC_IsMultiPartyCall;
         }
         break;

@@ -42,6 +42,7 @@
 
 #define PANEL_BOE           0x61bcd1
 #define PANEL_SMD           0x6188d0
+#define PANEL_CPT           0x6199d0
 
 #define LCD_DET 32
 
@@ -195,6 +196,207 @@ Lcd_init_t power_on_seq_s6d04h0_boe[] =
 	{SLEEP_MS, 0, 40}, // 40ms
 	
 	{CTRL_END, 0, 0}
+};
+
+Lcd_init_t power_on_seq_s6d04h0_cpt[] =
+{
+	// Initial Sequence
+	{WR_CMND, 0xCF,0}, 
+	{WR_DATA, 0, 0x00},
+	{WR_DATA, 0, 0xF9},	
+	{WR_DATA, 0, 0x30},
+
+	{WR_CMND, 0xED,0},
+	{WR_DATA, 0, 0x64},
+	{WR_DATA, 0, 0x03},	
+	{WR_DATA, 0, 0x12},
+	{WR_DATA, 0, 0x81},
+
+	{WR_CMND, 0xE8,0},
+	{WR_DATA, 0, 0x85},
+	{WR_DATA, 0, 0x00},	
+	{WR_DATA, 0, 0x78},
+
+	{WR_CMND, 0xCB,0},
+	{WR_DATA, 0, 0x39},
+	{WR_DATA, 0, 0x2D},	
+	{WR_DATA, 0, 0x00},
+	{WR_DATA, 0, 0x34},
+	{WR_DATA, 0, 0x02},	
+		
+	{WR_CMND, 0xF7,0},
+	{WR_DATA, 0, 0x20},
+
+	{WR_CMND, 0xEA,0}, 
+	{WR_DATA, 0, 0x00},
+	{WR_DATA, 0, 0x00},
+			
+	{WR_CMND, 0xC0,0}, 
+	{WR_DATA, 0, 0x22},
+
+	{WR_CMND, 0xC1,0}, 
+	{WR_DATA, 0, 0x10},
+
+	{WR_CMND, 0xC5,0},
+	{WR_DATA, 0, 0x2F},
+	{WR_DATA, 0, 0x37},
+		
+	{WR_CMND, 0x35,0},
+	{WR_DATA, 0, 0x00},
+
+	{WR_CMND, 0x36,0}, 
+	{WR_DATA, 0, 0x08},//change from 0xC8 to 0x08
+	{WR_CMND, 0x3A,0}, 
+	{WR_DATA, 0, 0x06},
+	
+	{WR_CMND, 0x26,0},
+	{WR_DATA, 0, 0x01},
+
+	{WR_CMND, 0xB1,0},
+	{WR_DATA, 0, 0x00},	 
+	{WR_DATA, 0, 0x16},
+
+	{WR_CMND, 0xB4,0}, 
+	{WR_DATA, 0, 0x02},
+
+	{WR_CMND, 0xB6,0},
+	{WR_DATA, 0, 0x0A},	 
+	{WR_DATA, 0, 0xC2},//change from 0xA2 to 0xC2
+	{WR_CMND, 0xF6,0}, 
+	{WR_DATA, 0, 0x01},
+	{WR_DATA, 0, 0x30},
+	{WR_DATA, 0, 0x00},
+
+	{WR_CMND, 0xF2,0}, 
+	{WR_DATA, 0, 0x03},
+
+	{WR_CMND, 0xE0,0}, 
+	{WR_DATA, 0, 0x0F},
+	{WR_DATA, 0, 0x1D},	
+	{WR_DATA, 0, 0x1A},
+	{WR_DATA, 0, 0x0B},	
+	{WR_DATA, 0, 0x0E},
+	{WR_DATA, 0, 0x06},	
+	{WR_DATA, 0, 0x4A},
+	{WR_DATA, 0, 0x76},	
+	{WR_DATA, 0, 0x3B},
+	{WR_DATA, 0, 0x08},
+	{WR_DATA, 0, 0x13},
+	{WR_DATA, 0, 0x06},
+	{WR_DATA, 0, 0x0B},
+	{WR_DATA, 0, 0x03},
+	{WR_DATA, 0, 0x00},
+
+	{WR_CMND, 0xE1,0}, 
+	{WR_DATA, 0, 0x00},
+	{WR_DATA, 0, 0x1D},	
+	{WR_DATA, 0, 0x21},
+	{WR_DATA, 0, 0x03},	
+	{WR_DATA, 0, 0x0F},
+	{WR_DATA, 0, 0x03},	
+	{WR_DATA, 0, 0x35},
+	{WR_DATA, 0, 0x24},	
+	{WR_DATA, 0, 0x46},
+	{WR_DATA, 0, 0x04},
+	{WR_DATA, 0, 0x0C},
+	{WR_DATA, 0, 0x0B},
+	{WR_DATA, 0, 0x34},
+	{WR_DATA, 0, 0x37},
+	{WR_DATA, 0, 0x0F},
+
+	{WR_CMND, 0xE2,0}, 
+	{WR_DATA, 0, 0x00},
+	{WR_DATA, 0, 0x09},	
+	{WR_DATA, 0, 0x09},
+	{WR_DATA, 0, 0x09},	
+	{WR_DATA, 0, 0x09},
+	{WR_DATA, 0, 0x09},	
+	{WR_DATA, 0, 0x09},
+	{WR_DATA, 0, 0x09},	
+	{WR_DATA, 0, 0x09},
+	{WR_DATA, 0, 0x09},
+	{WR_DATA, 0, 0x09},
+	{WR_DATA, 0, 0x09},
+	{WR_DATA, 0, 0x09},
+	{WR_DATA, 0, 0x09},
+	{WR_DATA, 0, 0x09},
+	{WR_DATA, 0, 0x09},	
+
+	{WR_CMND, 0xE3,0},
+	{WR_DATA, 0, 0x00},
+	{WR_DATA, 0, 0x00},	
+	{WR_DATA, 0, 0x00},
+	{WR_DATA, 0, 0x00},	
+	{WR_DATA, 0, 0x08},
+	{WR_DATA, 0, 0x06},	
+	{WR_DATA, 0, 0x06},
+	{WR_DATA, 0, 0x06},
+	{WR_DATA, 0, 0x06},
+	{WR_DATA, 0, 0x06},
+	{WR_DATA, 0, 0x04},
+	{WR_DATA, 0, 0x04},
+	{WR_DATA, 0, 0x04},
+	{WR_DATA, 0, 0x04},
+	{WR_DATA, 0, 0x04},
+	{WR_DATA, 0, 0x04},	
+	{WR_DATA, 0, 0x04},
+	{WR_DATA, 0, 0x04},	
+	{WR_DATA, 0, 0x03},
+	{WR_DATA, 0, 0x03},	
+	{WR_DATA, 0, 0x03},
+	{WR_DATA, 0, 0x03},	
+	{WR_DATA, 0, 0x03},
+	{WR_DATA, 0, 0x03},	
+	{WR_DATA, 0, 0x03},
+	{WR_DATA, 0, 0x03},
+	{WR_DATA, 0, 0x02},
+	{WR_DATA, 0, 0x03},
+	{WR_DATA, 0, 0x03},
+	{WR_DATA, 0, 0x03},
+	{WR_DATA, 0, 0x03},
+	{WR_DATA, 0, 0x03},
+	{WR_DATA, 0, 0x03},	
+	{WR_DATA, 0, 0x03},
+	{WR_DATA, 0, 0x03},
+	{WR_DATA, 0, 0x03},	
+	{WR_DATA, 0, 0x03},
+	{WR_DATA, 0, 0x03},	
+	{WR_DATA, 0, 0x03},
+	{WR_DATA, 0, 0x03},
+	{WR_DATA, 0, 0x03},
+	{WR_DATA, 0, 0x03},
+	{WR_DATA, 0, 0x03},
+	{WR_DATA, 0, 0x03},
+	{WR_DATA, 0, 0x03},
+	{WR_DATA, 0, 0x03},
+	{WR_DATA, 0, 0x03},		
+	{WR_DATA, 0, 0x03},		
+	{WR_DATA, 0, 0x03},
+	{WR_DATA, 0, 0x03},
+	{WR_DATA, 0, 0x03},
+	{WR_DATA, 0, 0x03},	
+	{WR_DATA, 0, 0x03},	
+	{WR_DATA, 0, 0x03},
+	{WR_DATA, 0, 0x03},	
+	{WR_DATA, 0, 0x03},
+	{WR_DATA, 0, 0x03},	
+	{WR_DATA, 0, 0x03},
+	{WR_DATA, 0, 0x03},
+	{WR_DATA, 0, 0x03},
+	{WR_DATA, 0, 0x03},
+	{WR_DATA, 0, 0x02},
+	{WR_DATA, 0, 0x01},
+	{WR_DATA, 0, 0x00},
+				
+	{WR_CMND, 0x11,0}, // (SLPOUT)
+
+	{SLEEP_MS, 0, 120}, // 120ms
+
+	{WR_CMND, 0x29,0}, // (DISPON)
+
+	{SLEEP_MS, 0, 50}, // 40ms
+	
+	{CTRL_END, 0, 0}	
 };
 
 Lcd_init_t power_on_seq_s6d04h0_smd[] =

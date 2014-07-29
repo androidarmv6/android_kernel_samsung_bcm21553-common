@@ -61,3 +61,4 @@ tssitime=1
 sd_gpout=0
 sd_oobonly=1
 sd_gpval=1
+iqlocalidx2g=64

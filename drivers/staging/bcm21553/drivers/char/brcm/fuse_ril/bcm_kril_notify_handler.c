@@ -5698,6 +5698,7 @@ void ProcessNotification(Kril_CAPI2Info_t *notify)
         }
 
         case MSG_USSD_DATA_IND:
+        case MSG_USSD_DATA_RSP:
             ProcessUSSDDataInd(notify->dataBuf);
             break;
 

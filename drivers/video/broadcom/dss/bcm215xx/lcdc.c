@@ -1543,6 +1543,8 @@ static inline void lcd_init_panels(void)
         lcd_send_cmd_sequence(power_on_seq_s6d04h0_boe);
     else if(lcd_id==PANEL_SMD)
 	lcd_send_cmd_sequence(power_on_seq_s6d04h0_smd);
+   else if(lcd_id==PANEL_CPT)
+	lcd_send_cmd_sequence(power_on_seq_s6d04h0_cpt);	
 #elif defined(CONFIG_BCM_LCD_S6D04K1)//LUISA_HW00
 	lcd_send_cmd_sequence(power_on_seq_s6d04k1_sdi);
 #elif defined(CONFIG_BCM_LCD_S6D04K1_LUISA_HW02)

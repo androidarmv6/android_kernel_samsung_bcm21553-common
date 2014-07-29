@@ -1755,6 +1755,12 @@ static struct i2c_board_info __initdata athenaray_i2cgpio0_board_info[] = {
 				.irq = GPIO_TO_IRQ(TSP_INT),
 	 },
 #endif
+#if defined(CONFIG_TOUCHSCREEN_TMA140)
+	{
+				I2C_BOARD_INFO("synaptics-rmi-ts", 0x30),
+				.irq = GPIO_TO_IRQ(TSP_INT),
+	},
+#endif
 #if defined(CONFIG_TOUCHSCREEN_F760) 
 	{
 				I2C_BOARD_INFO("silabs-f760", 0x20),

@@ -955,6 +955,8 @@ void	CAPI2_CC_GetConnectedLineID(UInt32 tid, UInt8 clientID, UInt8 callIndex);
 
 void	CAPI2_CC_IsMultiPartyCall(UInt32 tid, UInt8 clientID, UInt8 callIndex);
 
+void CAPI2_IsCurrentStateMpty(UInt32 tid, UInt8 clientId, UInt8 callIndex);
+
 //**************************************************************************************
 /**
 	Function to determine if there is a voice call.

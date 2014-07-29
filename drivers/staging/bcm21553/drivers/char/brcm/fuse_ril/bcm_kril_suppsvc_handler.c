@@ -868,7 +868,8 @@ void KRIL_QueryCallWaitingHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp)
                         KRIL_DEBUG(DBG_INFO, "activated:%d ss_class:%d\n", rsp->ss_activation_class_info[i].activated,  rsp->ss_activation_class_info[i].ss_class);
                         if (TRUE == rsp->ss_activation_class_info[i].activated)
                         {
-                            if ((SvcClassToATClass(rsp->ss_activation_class_info[i].ss_class) == tdata->ss_class) || (SS_SVCCLS_NOTSPECIFIED == tdata->ss_class))
+                            if ((SvcClassToATClass(rsp->ss_activation_class_info[i].ss_class) == tdata->ss_class)
+							|| (SS_SVCCLS_NOTSPECIFIED == tdata->ss_class && SS_SVCCLS_UNKNOWN != rsp->ss_activation_class_info[i].ss_class))
                             {
                                 rdata->activated = 1;
                                 rdata->ss_class |= SvcClassToATClass(rsp->ss_activation_class_info[i].ss_class);

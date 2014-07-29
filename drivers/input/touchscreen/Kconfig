@@ -735,6 +735,12 @@ config TOUCHSCREEN_MMS128_COOPERVE
 	help
 	  This enables support for Melfas MMS128 touchscreens.(CooperVE Only)
 
+config TOUCHSCREEN_TMA140
+	tristate "Synaptics i2c touchscreen"
+	depends on I2C
+	help
+	  This enables support for Synaptics RMI over I2C based touchscreens.
+
 config TOUCHSCREEN_MMS128_TASSCOOPER
 	tristate "Melfas touchscreen"
 	depends on I2C

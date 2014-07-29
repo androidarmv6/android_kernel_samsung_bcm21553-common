@@ -115,6 +115,23 @@ const char* PLMN_GetCountryByMcc(UInt16 mcc)
 	return PLMN_UNKNOWN_COUNTRY;
 }
 
+Boolean isNitzExceptionPLMN( UInt16	plmn_mcc, UInt16 plmn_mnc )
+{
+    UInt16 plmn_mcc_deci;
+    UInt16 plmn_mnc_deci;
+
+    plmn_mcc_deci = ((plmn_mcc & 0x0F00) >> 8) *100 + ((plmn_mcc & 0x00F0) >> 4)*10 + (plmn_mcc & 0x000F) ;
+    plmn_mnc_deci = ((plmn_mnc & 0x0F00) >> 8) *100 + ((plmn_mnc & 0x00F0) >> 4)*10 + (plmn_mnc & 0x000F) ;
+
+	if((plmn_mcc_deci == 232 && plmn_mnc_deci == 03)
+	)
+	{
+                KRIL_DEBUG(DBG_INFO,"PLMN NITZ exception case ::  MCC=%x, MNC=%x \n", plmn_mcc_deci, plmn_mcc_deci);
+		return TRUE;
+	}
+        KRIL_DEBUG(DBG_INFO,"no PLMN NITZ exception case ::  MCC=%x, MNC=%x \n", plmn_mcc_deci, plmn_mcc_deci);
+	return FALSE;
+}
 
 void GetSamsungPLMNname(
 					Boolean ucs2,
@@ -786,7 +803,8 @@ void KRIL_OperatorHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp)
                         memcpy(rdata->longname, nameResult->long_name.name, (nameResult->long_name.name_size < PLMN_LONG_NAME)?nameResult->long_name.name_size:PLMN_LONG_NAME );
                         memcpy(rdata->shortname, nameResult->short_name.name, (nameResult->short_name.name_size < PLMN_SHORT_NAME)?nameResult->short_name.name_size:PLMN_SHORT_NAME);
                         */
-                        if( (nameResult->long_name.nameType == PLMN_NAME_TYPE_LKUP_TABLE)  || (nameResult->long_name.nameType == PLMN_NAME_TYPE_INVALID) )
+                        if( (nameResult->long_name.nameType == PLMN_NAME_TYPE_LKUP_TABLE)  || (nameResult->long_name.nameType == PLMN_NAME_TYPE_INVALID) 
+                                 /*For NITZ exception*/||( nameResult->long_name.nameType == PLMN_NAME_TYPE_NITZ && TRUE == isNitzExceptionPLMN(v_current_mcc, v_current_mnc)) )
 			     {
 			     		coding = (nameResult->long_name.coding==0x00)?FALSE:TRUE;
 					GetSamsungPLMNname(coding, v_current_mcc, v_current_mnc, rdata->longname, NULL, NULL);
@@ -796,7 +814,8 @@ void KRIL_OperatorHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_rsp)
                         		memcpy(rdata->longname, nameResult->long_name.name, (nameResult->long_name.name_size < PLMN_LONG_NAME)?nameResult->long_name.name_size:PLMN_LONG_NAME );
 			     }
 
-			     if( (nameResult->short_name.nameType == PLMN_NAME_TYPE_LKUP_TABLE) || (nameResult->short_name.nameType == PLMN_NAME_TYPE_INVALID) )
+			     if( (nameResult->short_name.nameType == PLMN_NAME_TYPE_LKUP_TABLE) || (nameResult->short_name.nameType == PLMN_NAME_TYPE_INVALID) 
+                                 /*For NITZ exception*/||( nameResult->short_name.nameType == PLMN_NAME_TYPE_NITZ && TRUE == isNitzExceptionPLMN(v_current_mcc, v_current_mnc)) )
                         {
                         		coding = (nameResult->short_name.coding==0x00)?FALSE:TRUE;              
 					GetSamsungPLMNname(coding, v_current_mcc, v_current_mnc, NULL,  rdata->shortname, NULL);
@@ -1204,7 +1223,8 @@ void KRIL_QueryAvailableNetworksHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_r
 		   v_current_mcc = MS_PlmnConvertRawMcc(rsp->searched_plmn[i].mcc);
 		   v_current_mnc = MS_PlmnConvertRawMnc(rsp->searched_plmn[i].mcc, rsp->searched_plmn[i].mnc);
 	
-		   if( (rsp->searched_plmn[i].nonUcs2Name.longName.nameType== PLMN_NAME_TYPE_LKUP_TABLE) || (rsp->searched_plmn[i].nonUcs2Name.longName.nameType== PLMN_NAME_TYPE_INVALID) )
+		   if( (rsp->searched_plmn[i].nonUcs2Name.longName.nameType== PLMN_NAME_TYPE_LKUP_TABLE) || (rsp->searched_plmn[i].nonUcs2Name.longName.nameType== PLMN_NAME_TYPE_INVALID) 
+                    /*For NITZ exception*/||( rsp->searched_plmn[i].nonUcs2Name.longName.nameType == PLMN_NAME_TYPE_NITZ && TRUE == isNitzExceptionPLMN(v_current_mcc, v_current_mnc)) )
 		   {
 		   		coding = (rsp->searched_plmn[i].nonUcs2Name.longName.coding==0x00)?FALSE:TRUE;
 				GetSamsungPLMNname(coding, v_current_mcc, v_current_mnc, rdata->available_plmn[rdata->num_of_plmn].longname, NULL, NULL);
@@ -1213,7 +1233,8 @@ void KRIL_QueryAvailableNetworksHandler(void *ril_cmd, Kril_CAPI2Info_t *capi2_r
 		   {		
                 		strncpy(rdata->available_plmn[rdata->num_of_plmn].longname, rsp->searched_plmn[i].nonUcs2Name.longName.name, rsp->searched_plmn[i].nonUcs2Name.longName.name_size);
 		   }
-		   if( (rsp->searched_plmn[i].nonUcs2Name.shortName.nameType == PLMN_NAME_TYPE_LKUP_TABLE) || (rsp->searched_plmn[i].nonUcs2Name.shortName.nameType == PLMN_NAME_TYPE_INVALID) )
+		   if( (rsp->searched_plmn[i].nonUcs2Name.shortName.nameType == PLMN_NAME_TYPE_LKUP_TABLE) || (rsp->searched_plmn[i].nonUcs2Name.shortName.nameType == PLMN_NAME_TYPE_INVALID) 
+                    /*For NITZ exception*/||( rsp->searched_plmn[i].nonUcs2Name.shortName.nameType == PLMN_NAME_TYPE_NITZ && TRUE == isNitzExceptionPLMN(v_current_mcc, v_current_mnc)) )
                 {
                    		coding = (rsp->searched_plmn[i].nonUcs2Name.shortName.coding==0x00)?FALSE:TRUE;  
 				GetSamsungPLMNname(coding, v_current_mcc, v_current_mnc, NULL,  rdata->available_plmn[rdata->num_of_plmn].shortname, NULL);
