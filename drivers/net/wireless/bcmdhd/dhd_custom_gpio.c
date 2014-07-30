@@ -105,14 +105,14 @@ int dhd_customer_oob_irq_map(unsigned long *irq_flags_ptr)
 	WL_ERROR(("%s: customer specific Host GPIO number is (%d)\n",
 	         __FUNCTION__, dhd_oob_gpio_num));
 
-#if defined CUSTOMER_HW
-	host_oob_irq = MSM_GPIO_TO_INT(dhd_oob_gpio_num);
-#elif defined CUSTOMER_HW3
+#if defined CUSTOMER_HW3
 	gpio_request(dhd_oob_gpio_num, "oob irq");
 	host_oob_irq = gpio_to_irq(dhd_oob_gpio_num);
 	gpio_direction_input(dhd_oob_gpio_num);
+#elif defined CUSTOMER_HW
+	host_oob_irq = MSM_GPIO_TO_INT(dhd_oob_gpio_num);
+#endif /* CUSTOMER_HW3 */
 #endif /* CUSTOMER_HW */
-#endif /* CUSTOMER_HW2 */
 
 	return (host_oob_irq);
 }
