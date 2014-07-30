@@ -15,6 +15,16 @@ DHDOFILES = aiutils.o bcmsdh_sdmmc_linux.o dhd_linux.o siutils.o bcmutils.o   \
 	bcmsdh.o dhd_cdc.o bcmsdh_linux.o dhd_common.o linux_osl.o            \
 	bcmsdh_sdmmc.o dhd_custom_gpio.o sbutils.o wldev_common.o wl_android.o
 
+# BCM21553 specific
+DHDCFLAGS += -DDHD_SDALIGN=64 -DMAX_HDR_READ=64 -DDHD_FIRSTREAD=64           \
+	-DCUSTOMER_HW -DCUSTOMER_HW3 -DCUSTOM_OOB_GPIO_NUM=18 -DXTAL_PU_TIME_MOD \
+	-DCUSTOMER_HW_BCM2155X -UGET_CUSTOM_MAC_ENABLE -UCUSTOMER_HW2 -UHW_OOB   \
+	-UCUSTOM_OOB_GPIO_NUM -DCUSTOM_OOB_GPIO_NUM=18
+
+# Samsung platform specific
+DHDCFLAGS += -DBCMWLAN_SAMSUNG -DCUSTOMER_HW_SAMSUNG -DRDWR_MACADDR
+DHDOFILES += dhd_custom_sec.o
+
 obj-$(CONFIG_BCMDHD) += bcmdhd.o
 bcmdhd-objs += $(DHDOFILES)
 ifneq ($(CONFIG_WIRELESS_EXT),)
