@@ -55,3 +55,5 @@ obj-$(CONFIG_IWM)	+= iwmc3200wifi/
 
 obj-$(CONFIG_BCM4329)	+= bcm4329/
 obj-$(CONFIG_BCM_4330_DRIVER) += 4330/
+obj-$(CONFIG_BCMDHD)	+= bcmdhd/
+
