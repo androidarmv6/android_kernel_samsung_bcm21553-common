@@ -164,6 +164,11 @@ extern void dhd_pktfilter_offload_set(dhd_pub_t * dhd, char *arg);
 extern void dhd_pktfilter_offload_enable(dhd_pub_t * dhd, char *arg, int enable, int master_mode);
 #endif
 
+#ifdef RDWR_MACADDR
+extern int CheckRDWR_Macaddr(struct dhd_info *dhd, dhd_pub_t *dhdp, struct ether_addr *mac);
+extern int WriteRDWR_Macaddr(struct ether_addr *mac);
+#endif
+
 /* Interface control information */
 typedef struct dhd_if {
 	struct dhd_info *info;			/* back pointer to dhd_info */
@@ -389,7 +394,11 @@ uint dhd_intr = TRUE;
 module_param(dhd_intr, uint, 0);
 
 /* SDIO Drive Strength (in milliamps) */
+#if defined(CUSTOMER_HW_BCM2155X)
+uint dhd_sdiod_drive_strength = 8;
+#else
 uint dhd_sdiod_drive_strength = 6;
+#endif
 module_param(dhd_sdiod_drive_strength, uint, 0);
 
 /* Tx/Rx bounds */
@@ -900,7 +909,11 @@ _dhd_set_multicast_list(dhd_info_t *dhd, int ifidx)
 	}
 }
 
+#ifdef CUSTOMER_HW_SAMSUNG
+int
+#else
 static int
+#endif
 _dhd_set_mac_address(dhd_info_t *dhd, int ifidx, struct ether_addr *addr)
 {
 	char buf[32];
@@ -2788,11 +2801,17 @@ dhd_bus_start(dhd_pub_t *dhdp)
 #ifdef READ_MACADDR
 	dhd_read_macaddr(dhd);
 #endif
+#ifdef RDWR_MACADDR
+	CheckRDWR_Macaddr(dhd, &dhd->pub, &dhd->pub.mac);
+#endif
 
 	/* Bus is ready, do any protocol initialization */
 	if ((ret = dhd_prot_init(&dhd->pub)) < 0)
 		return ret;
 
+#ifdef RDWR_MACADDR
+	WriteRDWR_Macaddr(&dhd->pub.mac);
+#endif
 #ifdef WRITE_MACADDR
 	dhd_write_macaddr(dhd->pub.mac.octet);
 #endif
