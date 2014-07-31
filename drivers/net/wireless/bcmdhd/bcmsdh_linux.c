@@ -581,9 +581,14 @@ static irqreturn_t wlan_oob_irq(int irq, void *dev_id)
 
 	dhdp = (dhd_pub_t *)dev_get_drvdata(sdhcinfo->dev);
 
+#if !defined(CUSTOMER_HW_SAMSUNG)
 	bcmsdh_oob_intr_set(0);
+#endif
 
 	if (dhdp == NULL) {
+#if defined(CUSTOMER_HW_SAMSUNG)
+		disable_irq_nosync(sdhcinfo->oob_irq);
+#endif
 		SDLX_MSG(("Out of band GPIO interrupt fired way too early\n"));
 		return IRQ_HANDLED;
 	}
@@ -611,8 +616,9 @@ int bcmsdh_register_oob_intr(void * dhdp)
 			"bcmsdh_sdmmc", NULL);
 		if (error)
 			return -ENODEV;
-
+#if !defined(CUSTOMER_HW_BCM2155X)
 		enable_irq_wake(sdhcinfo->oob_irq);
+#endif
 		sdhcinfo->oob_irq_registered = TRUE;
 		sdhcinfo->oob_irq_enable_flag = TRUE;
 	}
@@ -634,9 +640,13 @@ void bcmsdh_set_irq(int flag)
 		sdhcinfo->oob_irq_enable_flag = flag;
 		if (flag) {
 			enable_irq(sdhcinfo->oob_irq);
+#if !defined(CUSTOMER_HW_BCM2155X)
 			enable_irq_wake(sdhcinfo->oob_irq);
+#endif
 		} else {
+#if !defined(CUSTOMER_HW_BCM2155X)
 			disable_irq_wake(sdhcinfo->oob_irq);
+#endif
 			disable_irq(sdhcinfo->oob_irq);
 		}
 	}

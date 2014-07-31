@@ -105,14 +105,14 @@ int dhd_customer_oob_irq_map(unsigned long *irq_flags_ptr)
 	WL_ERROR(("%s: customer specific Host GPIO number is (%d)\n",
 	         __FUNCTION__, dhd_oob_gpio_num));
 
-#if defined CUSTOMER_HW
-	host_oob_irq = MSM_GPIO_TO_INT(dhd_oob_gpio_num);
-#elif defined CUSTOMER_HW3
+#if defined CUSTOMER_HW3
 	gpio_request(dhd_oob_gpio_num, "oob irq");
 	host_oob_irq = gpio_to_irq(dhd_oob_gpio_num);
 	gpio_direction_input(dhd_oob_gpio_num);
+#elif defined CUSTOMER_HW
+	host_oob_irq = MSM_GPIO_TO_INT(dhd_oob_gpio_num);
+#endif /* CUSTOMER_HW3 */
 #endif /* CUSTOMER_HW */
-#endif /* CUSTOMER_HW2 */
 
 	return (host_oob_irq);
 }
@@ -190,6 +190,17 @@ dhd_custom_get_mac_address(unsigned char *buf)
 		bcopy((char *)&ea_example, buf, sizeof(struct ether_addr));
 	}
 #endif /* EXAMPLE_GET_MAC */
+
+#ifdef CUSTOMER_HW_SAMSUNG
+	{
+		extern int dhd_read_macaddr(struct ether_addr *mac);
+		struct ether_addr softmac;
+
+		dhd_read_macaddr(&softmac);
+		WL_ERROR(("Read MAC : [%02X:%02X:%02X:%02X:%02X:%02X]\n", softmac.octet[0], softmac.octet[1], softmac.octet[2], softmac.octet[3], softmac.octet[4], softmac.octet[5]));
+		bcopy((char *)&softmac, buf, sizeof(struct ether_addr));
+	}
+#endif
 
 	return ret;
 }

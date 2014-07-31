@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.35.7
-# Sun Jul 13 03:58:20 2014
+# Wed Jul 30 10:00:25 2014
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -1058,9 +1058,14 @@ CONFIG_MII=y
 # CONFIG_NETDEV_10000 is not set
 CONFIG_WLAN=y
 # CONFIG_BCM4329 is not set
+CONFIG_BCMDHD=m
+CONFIG_BCMDHD_FW_PATH="/system/etc/firmware/bcm4330_sta.bin"
+CONFIG_BCMDHD_NVRAM_PATH="/system/etc/firmware/nvram.txt"
+CONFIG_BCMDHD_WEXT=y
+# CONFIG_DHD_USE_STATIC_BUF is not set
 CONFIG_HOSTAP=y
 # CONFIG_HOSTAP_FIRMWARE is not set
-CONFIG_BCM_4330_DRIVER=y
+# CONFIG_BCM_4330_DRIVER is not set
 CONFIG_BROADCOM_WIFI_RESERVED_MEM=y
 
 #

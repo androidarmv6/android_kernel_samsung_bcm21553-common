@@ -383,7 +383,11 @@ uint dhd_intr = TRUE;
 module_param(dhd_intr, uint, 0);
 
 /* SDIO Drive Strength (in milliamps) */
+#if defined(CUSTOMER_HW_BCM2155X)
+uint dhd_sdiod_drive_strength = 8;
+#else
 uint dhd_sdiod_drive_strength = 6;
+#endif
 module_param(dhd_sdiod_drive_strength, uint, 0);
 
 /* Tx/Rx bounds */

@@ -13,7 +13,16 @@ DHDCFLAGS = -Wall -Wstrict-prototypes -Dlinux -DBCMDRIVER                     \
 DHDOFILES = aiutils.o bcmsdh_sdmmc_linux.o dhd_linux.o siutils.o bcmutils.o   \
 	dhd_linux_sched.o bcmwifi.o dhd_sdio.o bcmevent.o dhd_bta.o hndpmu.o  \
 	bcmsdh.o dhd_cdc.o bcmsdh_linux.o dhd_common.o linux_osl.o            \
-	bcmsdh_sdmmc.o dhd_custom_gpio.o sbutils.o wldev_common.o wl_android.o dhd_cfg80211.o
+	bcmsdh_sdmmc.o dhd_custom_gpio.o sbutils.o wldev_common.o wl_android.o
+
+# BCM21553 specific
+DHDCFLAGS += -DDHD_SDALIGN=64 -DMAX_HDR_READ=64 -DDHD_FIRSTREAD=64           \
+	-DCUSTOMER_HW -DCUSTOMER_HW3 -DCUSTOM_OOB_GPIO_NUM=18 -DXTAL_PU_TIME_MOD \
+	-DCUSTOMER_HW_BCM2155X -UCUSTOMER_HW2 -UHW_OOB -DCUSTOM_OOB_GPIO_NUM=18
+
+# Samsung platform specific
+DHDCFLAGS += -DBCMWLAN_SAMSUNG -DCUSTOMER_HW_SAMSUNG
+DHDOFILES += dhd_custom_sec.o
 
 obj-$(CONFIG_BCMDHD) += bcmdhd.o
 bcmdhd-objs += $(DHDOFILES)
@@ -22,7 +31,7 @@ bcmdhd-objs += wl_iw.o
 DHDCFLAGS += -DSOFTAP
 endif
 ifneq ($(CONFIG_CFG80211),)
-bcmdhd-objs += wl_cfg80211.o wl_cfgp2p.o wl_linux_mon.o
+bcmdhd-objs += wl_cfg80211.o wl_cfgp2p.o wl_linux_mon.o dhd_cfg80211.o
 DHDCFLAGS += -DWL_CFG80211
 endif
 EXTRA_CFLAGS = $(DHDCFLAGS)

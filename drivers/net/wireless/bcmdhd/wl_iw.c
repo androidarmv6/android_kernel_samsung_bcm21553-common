@@ -7241,7 +7241,11 @@ iwpriv_fw_reload(struct net_device *dev,
 			goto exit_proc;
 		}
 
+#if !defined(CUSTOMER_HW_BCM2155X)
 		if  (strstr(fwstr, "apsta") != NULL) {
+#else
+		if  (strstr(fwstr, "aps") != NULL) {
+#endif
 			  WL_SOFTAP(("GOT APSTA FIRMWARE\n"));
 			  ap_fw_loaded = TRUE;
 		} else {
