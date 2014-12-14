@@ -331,7 +331,6 @@ unifdef-y += route.h
 unifdef-y += rtc.h
 unifdef-y += rtnetlink.h
 unifdef-y += scc.h
-unifdef-y += sched.h
 unifdef-y += screen_info.h
 unifdef-y += sdla.h
 unifdef-y += securebits.h
