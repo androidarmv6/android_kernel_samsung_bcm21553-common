@@ -283,6 +283,7 @@ unifdef-y += lp.h
 unifdef-y += mempolicy.h
 unifdef-y += mii.h
 unifdef-y += mman.h
+unifdef-y += mount.h
 unifdef-y += mroute.h
 unifdef-y += mroute6.h
 unifdef-y += msdos_fs.h
