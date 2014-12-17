@@ -940,7 +940,7 @@ void android_enable_function(struct usb_function *f, int enable)
 		if (enable)
 			Android_switch_usb_conf(ADB_RNDIS_MOD);
 		else
-			enable_adb(_android_dev, 2);		
+			enable_adb(_android_dev, ADB_RNDIS_MOD);
 	}
 
 }
@@ -960,13 +960,14 @@ static int adb_enable_open(struct inode *ip, struct file *fp)
 		atomic_dec(&adb_enable_excl);
 		return -EBUSY;
 	}
+	enable_adb(_android_dev, ADB_MSC_MOD);
 	return 0;
 }
 
 static int adb_enable_release(struct inode *ip, struct file *fp)
 {
 	pr_info("disabling adb\n");
-	enable_adb(_android_dev, 0);
+	enable_adb(_android_dev, MSC_ONLY_MOD);
 	atomic_dec(&adb_enable_excl);
 	return 0;
 }
@@ -983,11 +984,11 @@ static int adb_enable_ioctl(struct inode *inode, struct file *fp,
 		pr_info("enabling adb MSC only mode\n");
 		Android_switch_usb_conf(ADB_DISABLE_MODE);
 		cur_adb_mode = 0;
-		//enable_adb(_android_dev, 0);
+		//enable_adb(_android_dev, MSC_ONLY_MOD);
 		break;
 	case ADB_MSC_MOD:
 		pr_info("enabling adb ADB mode\n");
-		enable_adb(_android_dev, 1);
+		enable_adb(_android_dev, ADB_MSC_MOD);
 		break;
 	case ADB_RNDIS_MOD:
 		pr_info("enabling adb RNDIS mode\n");
@@ -1002,7 +1003,7 @@ static int adb_enable_ioctl(struct inode *inode, struct file *fp,
 		break;
 	case ADB_RNDIS_MOD_OFF:
 		pr_info("adb rndis off mode\n");
-		enable_adb(_android_dev, 2);
+		enable_adb(_android_dev, ADB_RNDIS_MOD);
 		break;
 
 	case ADB_DISABLE_MODE:
