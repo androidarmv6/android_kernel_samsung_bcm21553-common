@@ -7498,6 +7498,7 @@ void __init sched_init(void)
 	int i, j;
 	unsigned long alloc_size = 0, ptr;
 
+#if 0
 	//{{ Add GAForensicINFO - 2/2
 	/*
 	*  Add GAForensic init for preventing symbol removal for optimization.
@@ -7522,6 +7523,7 @@ void __init sched_init(void)
 			(*checksum) = ((*checksum) << 1) ^ memory[address];
 	}
 	//}} Add GAForensicINFO - 2/2
+#endif
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
 	alloc_size += 2 * nr_cpu_ids * sizeof(void **);

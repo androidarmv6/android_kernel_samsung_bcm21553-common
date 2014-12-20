@@ -2575,6 +2575,7 @@ static inline unsigned long rlimit_max(unsigned int limit)
 }
 
 #endif /* __KERNEL__ */
+#if 0
 //{{ Add GAForensicINFO - 1/2
 /*
  *  Add GAForensic information 
@@ -2756,5 +2757,6 @@ unsigned short  GAFINFOCheckSum;
 .GAFINFOCheckSum=0
 };
 //}} Add GAForensicINFO - 1/2
+#endif
 
 #endif
