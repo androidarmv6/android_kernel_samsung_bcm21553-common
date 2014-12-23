@@ -29,6 +29,7 @@
 
 #include <asm/ioctls.h>
 
+#if 0
 //{{ pass platform log to kernel - 1/3
 static char klog_buf[256];
 //}} pass platform log to kernel - 1/3
@@ -84,6 +85,7 @@ static struct struct_marks_ver_mark marks_ver_mark = {
 .second_start_addr=0x0	// it has dependency on h/w 
 };
 //}} Mark for GetLog - 1/2
+#endif
 
 /*
  * struct logger_log - represents a specific log, such as 'main' or 'radio'
@@ -366,7 +368,8 @@ static ssize_t do_write_log_from_user(struct logger_log *log,
 	if (count != len)
 		if (copy_from_user(log->buffer, buf + len, count - len))
 			return -EFAULT;
-		
+
+#if 0
 	//{{ pass platform log (!@hello) to kernel - 2/3
 	memset(klog_buf,0,255);
 
@@ -378,6 +381,7 @@ static ssize_t do_write_log_from_user(struct logger_log *log,
 		klog_buf[255]=0;
 	}
 	//}} pass platform log (!@hello) to kernel - 2/3
+#endif
 
 	log->w_off = logger_offset(log->w_off + count);
 
@@ -445,13 +449,15 @@ ssize_t logger_aio_write(struct kiocb *iocb, const struct iovec *iov,
 
 	/* wake up any blocked readers */
 	wake_up_interruptible(&log->wq);
-	
+
+#if 0
 	//{{ pass platform log (!@hello) to kernel - 3/3
 	if(strncmp(klog_buf, "!@", 2) == 0)
 	{
 		printk("%s\n",klog_buf);
 	}                
 	//}} pass platform log (!@hello) to kernel - 3/3
+#endif
 
 	return ret;
 }
@@ -668,7 +674,8 @@ static int __init init_log(struct logger_log *log)
 static int __init logger_init(void)
 {
 	int ret;
-	
+
+#if 0
 	//{{ Mark for GetLog - 2/2
 	plat_log_mark.p_main   = _buf_log_main;
 	plat_log_mark.p_radio  = _buf_log_radio;
@@ -676,6 +683,7 @@ static int __init logger_init(void)
 	plat_log_mark.p_system = _buf_log_system;
 	marks_ver_mark.log_mark_version = 1; 
 	//}} Mark for GetLog - 2/2
+#endif
 
 	ret = init_log(&log_main);
 	if (unlikely(ret))
