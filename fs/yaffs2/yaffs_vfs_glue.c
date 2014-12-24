@@ -71,6 +71,8 @@
 #include <linux/slab.h>
 #include <linux/init.h>
 #include <linux/fs.h>
+#include <linux/security.h>
+#include <linux/xattr.h>
 #include <linux/proc_fs.h>
 #include <linux/smp_lock.h>
 #include <linux/pagemap.h>
@@ -1680,6 +1682,42 @@ out:
 #define YCRED(x) (x->cred)
 #endif
 
+static int yaffs_init_security(struct inode *dir, struct dentry *dentry,
+			       struct inode *inode)
+{
+	int err;
+	size_t size;
+	void *value;
+	char *suffix;
+	char name[XATTR_NAME_MAX];
+	yaffs_Device *dev;
+	yaffs_Object *obj = yaffs_InodeToObject(inode);
+	int result;
+
+	err = security_inode_init_security(inode, dir, &dentry->d_name,
+					   &suffix, &value, &size);
+	if (err) {
+		if (err == -EOPNOTSUPP)
+			return 0;
+		return err;
+	}
+	snprintf(name, sizeof name, "%s%s", XATTR_SECURITY_PREFIX, suffix);
+
+	/* inlined yaffs_setxattr: no instantiated dentry yet */
+	dev = obj->myDev;
+	yaffs_GrossLock(dev);
+	result = yaffs_SetXAttribute(obj, name, value, size, 0);
+	if (result == YAFFS_OK)
+		err = 0;
+	else if (result < 0)
+		err = result;
+	yaffs_GrossUnlock(dev);
+
+	kfree(value);
+	kfree(suffix);
+	return err;
+}
+
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(2, 5, 0))
 static int yaffs_mknod(struct inode *dir, struct dentry *dentry, int mode,
 			dev_t rdev)
@@ -1754,6 +1792,7 @@ static int yaffs_mknod(struct inode *dir, struct dentry *dentry, int mode,
 
 	if (obj) {
 		inode = yaffs_get_inode(dir->i_sb, mode, rdev, obj);
+		yaffs_init_security(dir, dentry, inode);
 		d_instantiate(dentry, inode);
 		update_dir_time(dir);
 		T(YAFFS_TRACE_OS,
@@ -1881,6 +1920,7 @@ static int yaffs_symlink(struct inode *dir, struct dentry *dentry,
 		struct inode *inode;
 
 		inode = yaffs_get_inode(dir->i_sb, obj->yst_mode, 0, obj);
+		yaffs_init_security(dir, dentry, inode);
 		d_instantiate(dentry, inode);
 		update_dir_time(dir);
 		T(YAFFS_TRACE_OS, (TSTR("symlink created OK\n")));
